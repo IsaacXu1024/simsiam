@@ -106,6 +106,13 @@ parser.add_argument(
     help="path to latest checkpoint (default: none)",
 )
 parser.add_argument(
+    "--checkpoint-dir",
+    default=".",
+    type=str,
+    metavar="PATH",
+    help="output checkpoint directory (default: current directory)",
+)
+parser.add_argument(
     "-e",
     "--evaluate",
     dest="evaluate",
@@ -408,6 +415,9 @@ def main_worker(gpu, ngpus_per_node, args):
         if not args.multiprocessing_distributed or (
             args.multiprocessing_distributed and args.rank % ngpus_per_node == 0
         ):
+            ckpt_path = os.path.join(
+                args.checkpoint_dir, "lincls_checkpoint_{:04d}.pt".format(epoch)
+            )
             save_checkpoint(
                 {
                     "epoch": epoch + 1,
@@ -417,6 +427,7 @@ def main_worker(gpu, ngpus_per_node, args):
                     "optimizer": optimizer.state_dict(),
                 },
                 is_best,
+                filename=ckpt_path,
             )
             if epoch == args.start_epoch:
                 sanity_check(model.state_dict(), args.pretrained)
