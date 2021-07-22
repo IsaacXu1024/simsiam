@@ -370,6 +370,15 @@ def main_worker(gpu, ngpus_per_node, args):
                 is_best=False,
                 filename=ckpt_path,
             )
+            # Make checkpoint_latest be a symbolic link to the new checkpoint.
+            # Since the link will already exist, we make a temporary symbolic
+            # link and copy it over to overwrite the destination.
+            tmp_link = ckpt_path + ".{}.tmp".format(time.time())
+            os.symlink(ckpt_path, tmp_link)
+            os.rename(
+                tmp_link,
+                os.path.join(args.checkpoint_dir, "checkpoint_latest.pt"),
+            )
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
