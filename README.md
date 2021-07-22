@@ -43,7 +43,7 @@ With a pre-trained model, to train a supervised linear classifier on frozen feat
 python main_lincls.py \
   -a resnet50 \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
-  --pretrained [your checkpoint path]/checkpoint_0099.pth.tar \
+  --pretrained [your checkpoint path]/checkpoint_0099.pt \
   --lars \
   [your imagenet-folder with train and val folders]
 ```
@@ -67,18 +67,18 @@ Our pre-trained ResNet-50 models and logs:
 <tr>
 <td align="center">100</td>
 <td align="center">512</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep/pretrain/checkpoint_0099.pth.tar">link</a></td>
+<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep/pretrain/checkpoint_0099.pt">link</a></td>
 <td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/logs/100ep/pretrain.log">link</a></td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep/linear/model_best.pth.tar">link</a></td>
+<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep/linear/model_best.pt">link</a></td>
 <td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/logs/100ep/linear.log">link</a></td>
 <td align="center">68.1</td>
 </tr>
 <tr>
 <td align="center">100</td>
 <td align="center">256</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep-256bs/pretrain/checkpoint_0099.pth.tar">link</a></td>
+<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep-256bs/pretrain/checkpoint_0099.pt">link</a></td>
 <td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/logs/100ep-256bs/pretrain.log">link</a></td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep-256bs/linear/model_best.pth.tar">link</a></td>
+<td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/models/100ep-256bs/linear/model_best.pt">link</a></td>
 <td align="center"><a href="https://dl.fbaipublicfiles.com/simsiam/logs/100ep-256bs/linear.log">link</a></td>
 <td align="center">68.3</td>
 </tr>
