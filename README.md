@@ -16,7 +16,7 @@ This is a PyTorch implementation of the [SimSiam paper](https://arxiv.org/abs/20
 
 ### Preparation
 
-Install PyTorch and download the ImageNet dataset following the [official PyTorch ImageNet training code](https://github.com/pytorch/examples/tree/master/imagenet). Similar to [MoCo](https://github.com/facebookresearch/moco), the code release contains minimal modifications for both unsupervised pre-training and linear classification to that code. 
+Install PyTorch and download the ImageNet dataset following the [official PyTorch ImageNet training code](https://github.com/pytorch/examples/tree/master/imagenet). Similar to [MoCo](https://github.com/facebookresearch/moco), the code release contains minimal modifications for both unsupervised pre-training and linear classification to that code.
 
 In addition, install [apex](https://github.com/NVIDIA/apex) for the [LARS](https://github.com/NVIDIA/apex/blob/master/apex/parallel/LARC.py) implementation needed for linear classification.
 
@@ -32,9 +32,9 @@ python main_simsiam.py \
   --fix-pred-lr \
   [your imagenet-folder with train and val folders]
 ```
-The script uses all the default hyper-parameters as described in the paper, and uses the default augmentation recipe from [MoCo v2](https://arxiv.org/abs/2003.04297). 
+The script uses all the default hyper-parameters as described in the paper, and uses the default augmentation recipe from [MoCo v2](https://arxiv.org/abs/2003.04297).
 
-The above command performs pre-training with a non-decaying predictor learning rate for 100 epochs, corresponding to the last row of Table 1 in the paper. 
+The above command performs pre-training with a non-decaying predictor learning rate for 100 epochs, corresponding to the last row of Table 1 in the paper.
 
 ### Linear Classification
 
