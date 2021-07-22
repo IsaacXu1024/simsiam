@@ -25,7 +25,7 @@ In addition, install [apex](https://github.com/NVIDIA/apex) for the [LARS](https
 Only **multi-gpu**, **DistributedDataParallel** training is supported; single-gpu or DataParallel training is not supported.
 
 To do unsupervised pre-training of a ResNet-50 model on ImageNet in an 8-gpu machine, run:
-```
+```bash
 python main_simsiam.py \
   -a resnet50 \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
@@ -39,7 +39,7 @@ The above command performs pre-training with a non-decaying predictor learning r
 ### Linear Classification
 
 With a pre-trained model, to train a supervised linear classifier on frozen features/weights in an 8-gpu machine, run:
-```
+```bash
 python main_lincls.py \
   -a resnet50 \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
