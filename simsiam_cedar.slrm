@@ -53,7 +53,18 @@ source "$ENV_DIR/bin/activate"
 echo ""
 echo "Installing packages into $ENV_DIR"
 echo ""
-python -m pip install --no-index torch torchvision
+# The recommend way is just to do this, but then it is for the wrong CUDA version
+# python -m pip install --no-index torch torchvision
+
+# Work out what version of CUDA we are using
+CUDA_VERSION=$(nvcc --version | sed -n 's/^.*release \([0-9\.]\+\).*$/\1/p');
+MOD="+cu${CUDA_VERSION/./}";
+echo "Installing pytorch with $MOD for CUDA $CUDA_VERSION"
+python -m pip install \
+    "torch==1.9.0${MOD}" \
+    "torchvision==0.10.0${MOD}" \
+    -f https://download.pytorch.org/whl/torch_stable.html
+
 python -m pip install -r requirements.txt
 python -m pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" git+https://github.com/NVIDIA/apex
 
