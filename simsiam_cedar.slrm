@@ -76,6 +76,9 @@ echo "pip freeze:"
 echo ""
 pip freeze
 echo ""
+echo "which nvcc:"
+which nvcc
+echo ""
 echo "nvcc --version"
 nvcc --version
 echo ""
