@@ -209,9 +209,9 @@ echo "Unsupervised Pre-Training"
 #
 # Both the batch size and number of workers get divided by ngpus_per_node in the main_simsiam.py script.
 # Batch size parameter is the total batch size across all GPUs on the current node
-# We want the actual batch size to be 64 per GPU, so the value to use is 64 * number of GPUs per node
+# We want the batch size to be as large we can, which is about 48 per GPU.
 #
-BATCH_SIZE="$(( 64 * SLURM_JOB_NUM_NODES * SLURM_TASKS_PER_NODE ))"
+BATCH_SIZE="$(( 48 * SLURM_JOB_NUM_NODES * SLURM_TASKS_PER_NODE ))"
 N_WORKERS="$(( SLURM_CPUS_PER_TASK * SLURM_TASKS_PER_NODE ))"
 #
 #
