@@ -26,7 +26,13 @@ echo "SLURM_PROCID         = $SLURM_PROCID"
 echo "SLURM_NTASKS         = $SLURM_NTASKS"
 echo "SLURM_CPUS_ON_NODE   = $SLURM_CPUS_ON_NODE"
 echo "SLURM_CPUS_PER_TASK  = $SLURM_CPUS_PER_TASK"
-
+echo ""
+echo "------------------------------------------------------------------------"
+echo ""
+# Input handling
+DATASET="$1"
+echo "DATASET = $DATASET"
+echo ""
 echo "------------------------------------------------------------------------"
 echo ""
 date
@@ -130,38 +136,58 @@ echo ""
 echo ""
 date
 echo ""
-echo "# Copying imagenet dataset to local node's SSD storage, ${DATA_DIR}"
 
-rsync -vz /project/rrg-ttt/datasets/imagenet/* "${DATA_DIR}/"
+if [ "$DATASET" == "imagenet" ]; then
+    echo "# Copying imagenet dataset to local node's SSD storage, ${DATA_DIR}"
 
-mkdir -p "$DATA_DIR/train"
-mkdir -p "$DATA_DIR/val"
+    rsync -vz /project/rrg-ttt/datasets/imagenet/* "${DATA_DIR}/"
 
-echo "Extracting training data"
-tar -C "${DATA_DIR}/train" -xf "${DATA_DIR}/ILSVRC2012_img_train.tar"
-find "${DATA_DIR}/train" -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
-echo ""
+    mkdir -p "$DATA_DIR/train"
+    mkdir -p "$DATA_DIR/val"
 
-echo "Extracting validation data"
-tar -C "${DATA_DIR}/val" -xf "${DATA_DIR}/ILSVRC2012_img_val.tar"
+    echo "Extracting training data"
+    tar -C "${DATA_DIR}/train" -xf "${DATA_DIR}/ILSVRC2012_img_train.tar"
+    find "${DATA_DIR}/train" -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
+    echo ""
 
-# Move validation images to subfolders:
-VAL_PREPPER="$DATA_DIR/valprep.sh"
-if test -f "$VAL_PREPPER"; then
-    echo "Downloading valprep.sh";
-    wget https://raw.githubusercontent.com/soumith/imagenetloader.torch/b81dbb1/valprep.sh -O "$VAL_PREPPER";
+    echo "Extracting validation data"
+    tar -C "${DATA_DIR}/val" -xf "${DATA_DIR}/ILSVRC2012_img_val.tar"
+
+    # Move validation images to subfolders:
+    VAL_PREPPER="$DATA_DIR/valprep.sh"
+    if test -f "$VAL_PREPPER"; then
+        echo "Downloading valprep.sh";
+        wget https://raw.githubusercontent.com/soumith/imagenetloader.torch/b81dbb1/valprep.sh -O "$VAL_PREPPER";
+    fi
+    echo "Moving validation data into subfolders"
+    (cd "${DATA_DIR}/val"; sh "$VAL_PREPPER")
+    echo ""
+
+    # Check total files after extract
+    #
+    #  find train/ -name "*.JPEG" | wc -l
+    #  # Should be 1281167
+    #  find val/ -name "*.JPEG" | wc -l
+    #  # Should be 50000
+
+elif [ "$DATASET" == "imagenette2-160" ]; then
+    echo ""
+    echo "# Copying imagenette2-160 dataset to local node's SSD storage, ${DATA_DIR}"
+
+    rsync -zv "/project/rrg-ttt/datasets/imagenette2/imagenette2-160.tgz" "${DATA_DIR}/"
+
+    echo ""
+    echo "Extracting data"
+    tar -C "${DATA_DIR}" -xf "${DATA_DIR}/imagenette2-160.tgz"
+    DATA_DIR="$DATA_DIR/imagenette2-160"
+
+else
+    echo "Invalid dataset name: $DATASET"
+    exit;
+
 fi
-echo "Moving validation data into subfolders"
-(cd "${DATA_DIR}/val"; sh "$VAL_PREPPER")
+
 echo ""
-
-# Check total files after extract
-#
-#  find train/ -name "*.JPEG" | wc -l
-#  # Should be 1281167
-#  find val/ -name "*.JPEG" | wc -l
-#  # Should be 50000
-
 echo "------------------------------------------------------------------------"
 echo ""
 date
