@@ -4,8 +4,9 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from PIL import ImageFilter
 import random
+
+from PIL import ImageFilter
 
 
 class TwoCropsTransform:
@@ -23,7 +24,7 @@ class TwoCropsTransform:
 class GaussianBlur(object):
     """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""
 
-    def __init__(self, sigma=[.1, 2.]):
+    def __init__(self, sigma=[0.1, 2.0]):
         self.sigma = sigma
 
     def __call__(self, x):
