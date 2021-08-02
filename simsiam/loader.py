@@ -28,7 +28,9 @@ class GaussianBlur(object):
     .. _SimCLR: https://arxiv.org/abs/2002.05709
     """
 
-    def __init__(self, sigma=[0.1, 2.0]):
+    def __init__(self, sigma=None):
+        if sigma is None:
+            sigma = [0.1, 2.0]
         self.sigma = sigma
 
     def __call__(self, x):
