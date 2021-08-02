@@ -410,7 +410,7 @@ def save_checkpoint(state, is_best, filename="checkpoint.pth.tar"):
 
 
 class AverageMeter(object):
-    """Computes and stores the average and current value"""
+    """Compute and store the average and current value."""
 
     def __init__(self, name, fmt=":f"):
         self.name = name
@@ -452,7 +452,7 @@ class ProgressMeter(object):
 
 
 def adjust_learning_rate(optimizer, init_lr, epoch, args):
-    """Decay the learning rate based on schedule"""
+    """Decay the learning rate based on schedule."""
     cur_lr = init_lr * 0.5 * (1.0 + math.cos(math.pi * epoch / args.epochs))
     for param_group in optimizer.param_groups:
         if "fix_lr" in param_group and param_group["fix_lr"]:

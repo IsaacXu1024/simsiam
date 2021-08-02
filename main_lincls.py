@@ -528,6 +528,7 @@ def save_checkpoint(state, is_best, filename="checkpoint.pth.tar"):
 def sanity_check(state_dict, pretrained_weights):
     """
     Linear classifier should not change any weights other than the linear layer.
+
     This sanity check asserts nothing wrong happens (e.g., BN stats updated).
     """
     print("=> loading '{}' for sanity check".format(pretrained_weights))
@@ -554,7 +555,7 @@ def sanity_check(state_dict, pretrained_weights):
 
 
 class AverageMeter(object):
-    """Computes and stores the average and current value"""
+    """Compute and store the average and current value."""
 
     def __init__(self, name, fmt=":f"):
         self.name = name
@@ -596,14 +597,14 @@ class ProgressMeter(object):
 
 
 def adjust_learning_rate(optimizer, init_lr, epoch, args):
-    """Decay the learning rate based on schedule"""
+    """Decay the learning rate based on schedule."""
     cur_lr = init_lr * 0.5 * (1.0 + math.cos(math.pi * epoch / args.epochs))
     for param_group in optimizer.param_groups:
         param_group["lr"] = cur_lr
 
 
 def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
+    """Compute the accuracy over the k top predictions for the specified values of k."""
     with torch.no_grad():
         maxk = max(topk)
         batch_size = target.size(0)
