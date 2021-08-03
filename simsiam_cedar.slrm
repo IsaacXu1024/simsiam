@@ -72,7 +72,7 @@ python -m pip install \
     -f https://download.pytorch.org/whl/torch_stable.html
 
 python -m pip install -r requirements.txt
-python -m pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" git+https://github.com/NVIDIA/apex
+python -m pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" git+https://github.com/NVIDIA/apex
 
 echo "------------------------------------------------------------------------"
 echo ""
