@@ -111,7 +111,8 @@ echo "ls -lh ${SLURM_TMPDIR}:"
 ls -lh "${SLURM_TMPDIR}"
 echo ""
 
-DATA_DIR="${SLURM_TMPDIR}/imagenet"
+DATA_DIR="${SLURM_TMPDIR}/datasets/$DATASET"
+rm -rf "$DATA_DIR"
 mkdir -p "$DATA_DIR"
 
 echo "ls -lh ${DATA_DIR}:"
