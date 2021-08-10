@@ -423,6 +423,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
 
 def save_checkpoint(state, is_best, filename="checkpoint.pt"):
+    print("Saving checkpoint: {}".format(filename))
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, "model_best.pt")
