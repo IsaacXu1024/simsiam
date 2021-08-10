@@ -65,6 +65,7 @@ date
 echo ""
 echo "# Activating the environment"
 
+source ~/.bashrc
 ENVNAME=simsiam
 conda activate "$HOME/venvs/$ENVNAME"
 
