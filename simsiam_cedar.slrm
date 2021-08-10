@@ -262,6 +262,7 @@ python main_simsiam.py \
     --workers "$N_WORKERS" \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
+    --resume "$CKPT_DIR/checkpoint_latest.pt" \
     "$DATA_DIR"
 
 echo ""
@@ -284,4 +285,5 @@ python main_lincls.py \
     --workers "$N_WORKERS" \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
+    --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
     "$DATA_DIR"
