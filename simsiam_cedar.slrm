@@ -11,6 +11,9 @@
 #SBATCH --job-name=simsiam
 #SBATCH --account=desired_account   # Use default account
 
+# Manually define this variable to be equal to the number of GPUs in the --gres argument above
+GPUS_PER_NODE=4
+
 # sbatch for Graham/Cedar
 # Based on https://docs.computecanada.ca/wiki/PyTorch/en
 # and https://github.com/facebookresearch/simsiam/blob/main/README.md
@@ -42,7 +45,6 @@ echo "SLURM_NTASKS            = $SLURM_NTASKS"              # Number of tasks to
 echo "SLURM_PROCID            = $SLURM_PROCID"              # The MPI rank (or relative process ID) of the current process
 echo ""
 echo "SBATCH_GRES             = $SBATCH_GRES"               # Same as --gres
-GPUS_PER_NODE=$(echo "$SBATCH_GRES" | sed 's/^[^:]*://g')
 echo "GPUS_PER_NODE           = $GPUS_PER_NODE"             # Number of GPUs requested. Only set if the -G, --gpus option is specified.
 echo "SLURM_CPUS_ON_NODE      = $SLURM_CPUS_ON_NODE"        # Number of CPUs allocated to the batch step.
 echo "SLURM_JOB_CPUS_PER_NODE = $SLURM_JOB_CPUS_PER_NODE"   # Count of CPUs available to the job on the nodes in the allocation.
