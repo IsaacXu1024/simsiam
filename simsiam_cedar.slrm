@@ -244,6 +244,8 @@ echo "Unsupervised Pre-Training"
 BATCH_SIZE="$(( 48 * SLURM_JOB_NUM_NODES * GPUS_PER_NODE ))"
 N_WORKERS="$SLURM_JOB_CPUS_PER_NODE"
 #
+echo "BATCH_SIZE = $BATCH_SIZE"
+echo "N_WORKERS  = $N_WORKERS"
 #
 # We just need to call the main_simsiam script once and it will launch all processes on each node, for each GPU, for us automatically.
 #
