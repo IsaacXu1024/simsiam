@@ -1,11 +1,13 @@
 #!/bin/bash
 #SBATCH --time=72:00:00             # max walltime, hh:mm:ss
-#SBATCH --nodes 1                   # Number of nodes to request.
-#SBATCH --gres=gpu:4                # Number of GPUs per node to request.
-#SBATCH --tasks-per-node=4          # Set this to equal the number of GPUs per node.
-#SBATCH --cpus-per-task=6           # Number of CPUs per GPU-worker.
+#SBATCH --nodes 1                   # Number of nodes to request
+#SBATCH --gres=gpu:4                # Number of GPUs per node to request
+#SBATCH --tasks-per-node=1          # Number of processes to spawn per node
+#SBATCH --cpus-per-task=24          # Number of CPUs per GPU
 #SBATCH --mem=125G                  # Memory per node
-#SBATCH --output=logs/%A-%a_%N.out  # %N for node name, %j for jobID. **You must manually create output directory "logs" before launching job.**
+#SBATCH --output=logs/%x_%A-%a_%n-%t_%N.out
+                                    # %x=job-name, %A=job ID, %a=array value, %n=node rank, %t=task rank, %N=hostname
+                                    # Note: You must manually create output directory "logs" before launching job.
 #SBATCH --job-name=simsiam
 
 # sbatch for Graham/Cedar
@@ -38,6 +40,8 @@ echo "SLURM_TASKS_PER_NODE    = $SLURM_TASKS_PER_NODE"      # Number of tasks to
 echo "SLURM_NTASKS            = $SLURM_NTASKS"              # Number of tasks to spawn.
 echo "SLURM_PROCID            = $SLURM_PROCID"              # The MPI rank (or relative process ID) of the current process
 echo ""
+echo "SBATCH_GRES             = $SBATCH_GRES"               # Same as --gres
+echo "SLURM_GPUS              = $SLURM_GPUS"                # Number of GPUs requested. Only set if the -G, --gpus option is specified.
 echo "SLURM_GPUS_PER_NODE     = $SLURM_GPUS_PER_NODE"       # Requested GPU count per allocated node. Only set if the --gpus-per-node option is specified.
 echo "SLURM_GPUS_PER_TASK     = $SLURM_GPUS_PER_TASK"       # Requested GPU count per allocated task. Only set if the --gpus-per-task option is specified.
 echo "SLURM_CPUS_ON_NODE      = $SLURM_CPUS_ON_NODE"        # Number of CPUs allocated to the batch step.
