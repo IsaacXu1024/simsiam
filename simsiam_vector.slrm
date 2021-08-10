@@ -61,6 +61,15 @@ echo "DATASET = $DATASET"
 echo ""
 echo "------------------------------------------------------------------------"
 echo ""
+pwd
+echo ""
+echo "commit ref:"
+git rev-parse HEAD
+echo ""
+git status
+echo ""
+echo "------------------------------------------------------------------------"
+echo ""
 date
 echo ""
 echo "# Activating the environment"
