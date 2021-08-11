@@ -28,6 +28,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torchvision.transforms as transforms
 
+import byol.builder
 import simsiam.builder
 import simsiam.loader
 
@@ -178,6 +179,26 @@ parser.add_argument(
     "--fix-pred-lr", action="store_true", help="Fix learning rate for the predictor"
 )
 
+# BYOL arguments
+parser.add_argument(
+    "--byol",
+    default=False,
+    type=bool,
+    help="Flag for whether or not the model is byol",
+)
+parser.add_argument(
+    "--byol-alpha",
+    default=0.99,
+    type=float,
+    help="Alpha used for byol's EMA updates",
+)
+parser.add_argument(
+    "--init-from-online",
+    default=True,
+    type=bool,
+    help="Initialize byol target network from initialized online weights",
+)
+
 
 def main():
     args = parser.parse_args()
@@ -248,7 +269,12 @@ def main_worker(gpu, ngpus_per_node, args):
         torch.distributed.barrier()
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = simsiam.builder.SimSiam(models.__dict__[args.arch], args.dim, args.pred_dim)
+    if args.byol:
+        model = byol.builder.BYOL(models.__dict__[args.arch], args.dim, args.pred_dim)
+    else:
+        model = simsiam.builder.SimSiam(
+            models.__dict__[args.arch], args.dim, args.pred_dim
+        )
 
     # infer learning rate before changing batch size
     init_lr = args.lr * args.batch_size / 256
@@ -460,6 +486,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        # update target model if BYOL
+        if args.byol:
+            model.update_target(model.target_encoder, model.encoder, args.byol_alpha)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
