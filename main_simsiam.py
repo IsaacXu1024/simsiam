@@ -7,6 +7,7 @@
 
 import argparse
 import builtins
+import contextlib
 import math
 import os
 import random
@@ -116,6 +117,21 @@ parser.add_argument(
     type=str,
     metavar="PATH",
     help="output checkpoint directory (default: current directory)",
+)
+parser.add_argument(
+    "--num-checkpoints",
+    default=3,
+    type=int,
+    help="number of past checkpoints to keep (default: 3)",
+)
+parser.add_argument(
+    "--min-checkpoint-interval",
+    default=600,
+    type=float,
+    help=(
+        "minimum amount of time elapsed between saving checkpoints,"
+        " in seconds (default: 600s = 10min)"
+    ),
 )
 parser.add_argument(
     "--world-size",
@@ -346,7 +362,10 @@ def main_worker(gpu, ngpus_per_node, args):
         drop_last=True,
     )
 
-    for epoch in range(args.start_epoch, args.epochs):
+    checkpoint_paths = []
+    t_last_checkpoint = None
+
+    for epoch in range(args.start_epoch + 1, args.epochs + 1):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, init_lr, epoch, args)
@@ -357,28 +376,56 @@ def main_worker(gpu, ngpus_per_node, args):
         if not args.multiprocessing_distributed or (
             args.multiprocessing_distributed and args.rank % ngpus_per_node == 0
         ):
-            ckpt_path = os.path.join(
-                args.checkpoint_dir, "checkpoint_{:04d}.pt".format(epoch)
-            )
-            save_checkpoint(
-                {
-                    "epoch": epoch + 1,
-                    "arch": args.arch,
-                    "state_dict": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                },
-                is_best=False,
-                filename=ckpt_path,
-            )
-            # Make checkpoint_latest be a symbolic link to the new checkpoint.
-            # Since the link will already exist, we make a temporary symbolic
-            # link and copy it over to overwrite the destination.
-            tmp_link = ckpt_path + ".{}.tmp".format(time.time())
-            os.symlink(ckpt_path, tmp_link)
-            os.rename(
-                tmp_link,
-                os.path.join(args.checkpoint_dir, "checkpoint_latest.pt"),
-            )
+            ckpt_fmt = "checkpoint_{:04d}.pt"
+            ckpt_path = os.path.join(args.checkpoint_dir, ckpt_fmt.format(epoch))
+            if (
+                t_last_checkpoint is None
+                or epoch >= args.epochs - 1
+                or time.time() - t_last_checkpoint >= args.min_checkpoint_interval
+            ):
+                save_checkpoint(
+                    {
+                        "epoch": epoch,
+                        "arch": args.arch,
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                    },
+                    is_best=False,
+                    filename=ckpt_path,
+                )
+                checkpoint_paths.append(ckpt_path)
+                t_last_checkpoint = time.time()
+                # Make checkpoint_latest be a symbolic link to the new checkpoint.
+                # Since the link will already exist, we make a temporary symbolic
+                # link and copy it over to overwrite the destination.
+                tmp_link = ckpt_path + ".{}.tmp".format(time.time())
+                os.symlink(ckpt_path, tmp_link)
+                os.rename(
+                    tmp_link,
+                    os.path.join(args.checkpoint_dir, "checkpoint_latest.pt"),
+                )
+            # Remove an old checkpoint, to save space
+            if args.num_checkpoints <= 0:
+                # Never remove old checkpoints if we are trying to store them
+                # all
+                pass
+            elif len(checkpoint_paths) > args.num_checkpoints:
+                # Remove an old checkpoint which was saved in this run to make
+                # space
+                ckpt_path_old = checkpoint_paths.pop(0)
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(ckpt_path_old)
+            elif len(checkpoint_paths) > 0:
+                # To make sure space is cleared, we remove checkpoints which
+                # may have been created by previous runs of this script
+                # (before it was pre-empted or otherwise restarted)
+                ckpt_path_old = os.path.join(
+                    args.checkpoint_dir,
+                    ckpt_fmt.format(epoch - args.num_checkpoints),
+                )
+                if ckpt_path_old not in checkpoint_paths:
+                    with contextlib.suppress(FileNotFoundError):
+                        os.remove(ckpt_path_old)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
@@ -423,6 +470,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
 
 def save_checkpoint(state, is_best, filename="checkpoint.pt"):
+    print("Saving checkpoint: {}".format(filename))
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, "model_best.pt")
