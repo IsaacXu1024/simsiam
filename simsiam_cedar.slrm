@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --time=72:00:00             # max walltime, hh:mm:ss
 #SBATCH --nodes 1                   # Number of nodes to request
-#SBATCH --gres=gpu:4                # Number of GPUs per node to request
+#SBATCH --gres=gpu:2                # Number of GPUs per node to request
 #SBATCH --tasks-per-node=1          # Number of processes to spawn per node
-#SBATCH --cpus-per-task=24          # Number of CPUs per GPU
-#SBATCH --mem=125G                  # Memory per node
+#SBATCH --cpus-per-task=12          # Number of CPUs per GPU
+#SBATCH --mem=64G                   # Memory per node
 #SBATCH --output=logs/%x_%A-%a_%n-%t.out
                                     # %x=job-name, %A=job ID, %a=array value, %n=node rank, %t=task rank, %N=hostname
                                     # Note: You must manually create output directory "logs" before launching job.
@@ -12,7 +12,7 @@
 #SBATCH --account=desired_account   # Use default account
 
 # Manually define this variable to be equal to the number of GPUs in the --gres argument above
-GPUS_PER_NODE=4
+GPUS_PER_NODE=2
 
 # sbatch for Graham/Cedar
 # Based on https://docs.computecanada.ca/wiki/PyTorch/en
