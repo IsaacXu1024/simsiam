@@ -7,6 +7,7 @@
 
 import argparse
 import builtins
+import contextlib
 import math
 import os
 import random
@@ -111,6 +112,12 @@ parser.add_argument(
     type=str,
     metavar="PATH",
     help="output checkpoint directory (default: current directory)",
+)
+parser.add_argument(
+    "--num-checkpoints",
+    default=3,
+    type=int,
+    help="number of past checkpoints to keep (default: 3)",
 )
 parser.add_argument(
     "-e",
@@ -415,9 +422,8 @@ def main_worker(gpu, ngpus_per_node, args):
         if not args.multiprocessing_distributed or (
             args.multiprocessing_distributed and args.rank % ngpus_per_node == 0
         ):
-            ckpt_path = os.path.join(
-                args.checkpoint_dir, "lincls_checkpoint_{:04d}.pt".format(epoch)
-            )
+            ckpt_fmt = "lincls_checkpoint_{:04d}.pt"
+            ckpt_path = os.path.join(args.checkpoint_dir, ckpt_fmt.format(epoch))
             save_checkpoint(
                 {
                     "epoch": epoch + 1,
@@ -440,6 +446,14 @@ def main_worker(gpu, ngpus_per_node, args):
                 tmp_link,
                 os.path.join(args.checkpoint_dir, "lincls_checkpoint_latest.pt"),
             )
+            # Remove an old checkpoint, to save space
+            if args.num_checkpoints > 0:
+                ckpt_path_old = os.path.join(
+                    args.checkpoint_dir,
+                    ckpt_fmt.format(epoch - args.num_checkpoints),
+                )
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(ckpt_path_old)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
