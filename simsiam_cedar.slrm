@@ -9,6 +9,7 @@
                                     # %x=job-name, %A=job ID, %a=array value, %n=node rank, %t=task rank, %N=hostname
                                     # Note: You must manually create output directory "logs" before launching job.
 #SBATCH --job-name=simsiam
+#SBATCH --account=desired_account   # Use default account
 
 # sbatch for Graham/Cedar
 # Based on https://docs.computecanada.ca/wiki/PyTorch/en
