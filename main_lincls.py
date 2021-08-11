@@ -416,7 +416,7 @@ def main_worker(gpu, ngpus_per_node, args):
     checkpoint_paths = []
     t_last_checkpoint = None
 
-    for epoch in range(args.start_epoch, args.epochs):
+    for epoch in range(args.start_epoch + 1, args.epochs + 1):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, init_lr, epoch, args)
@@ -443,7 +443,7 @@ def main_worker(gpu, ngpus_per_node, args):
             ):
                 save_checkpoint(
                     {
-                        "epoch": epoch + 1,
+                        "epoch": epoch,
                         "arch": args.arch,
                         "state_dict": model.state_dict(),
                         "best_acc1": best_acc1,
