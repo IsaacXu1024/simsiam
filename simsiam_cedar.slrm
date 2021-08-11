@@ -5,7 +5,7 @@
 #SBATCH --tasks-per-node=1          # Number of processes to spawn per node
 #SBATCH --cpus-per-task=24          # Number of CPUs per GPU
 #SBATCH --mem=125G                  # Memory per node
-#SBATCH --output=logs/%x_%A-%a_%n-%t_%N.out
+#SBATCH --output=logs/%x_%A-%a_%n-%t.out
                                     # %x=job-name, %A=job ID, %a=array value, %n=node rank, %t=task rank, %N=hostname
                                     # Note: You must manually create output directory "logs" before launching job.
 #SBATCH --job-name=simsiam
