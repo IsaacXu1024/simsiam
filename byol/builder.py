@@ -25,7 +25,7 @@ class BYOL(nn.Module):
         Hidden dimension of the predictor
     """
 
-    def __init__(self, base_encoder, init_from_online, dim=2048, pred_dim=512):
+    def __init__(self, base_encoder, init_target, dim=2048, pred_dim=512):
         super(BYOL, self).__init__()
 
         # create the online encoder
@@ -54,8 +54,8 @@ class BYOL(nn.Module):
         # disable grad calculations for target model
         utilities.set_requires_grad(self.target_encoder, False)
 
-        if init_from_online:
-            self.update_target(self.target_encoder, self.encoder, None)
+        if init_target:
+            pass
 
         # build a 2-layer predictor
         self.predictor = nn.Sequential(
@@ -92,7 +92,7 @@ class BYOL(nn.Module):
         p1 = self.predictor(z1)  # NxC
         p2 = self.predictor(z2)  # NxC
 
-        return p1, p2, z1_t.detach(), z2_t.detach()
+        return p1, p2, z1_t, z2_t
 
     def update_target(self, target_model, online_model, alpha=0.99):
         target_state_dict = target_model.state_dict()

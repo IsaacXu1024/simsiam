@@ -179,7 +179,7 @@ parser.add_argument(
     "--fix-pred-lr", action="store_true", help="Fix learning rate for the predictor"
 )
 
-# BYOL arguments
+# byol arguments
 parser.add_argument(
     "--byol",
     default=False,
@@ -193,10 +193,10 @@ parser.add_argument(
     help="Alpha used for byol's EMA updates",
 )
 parser.add_argument(
-    "--init-from-online",
+    "--init-target",
     default=True,
     type=bool,
-    help="Initialize byol target network from initialized online weights",
+    help="Initialize byol target network from to have distinct weights from online",
 )
 
 
@@ -270,7 +270,9 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     if args.byol:
-        model = byol.builder.BYOL(models.__dict__[args.arch], args.dim, args.pred_dim)
+        model = byol.builder.BYOL(
+            models.__dict__[args.arch], args.init_target, args.dim, args.pred_dim
+        )
     else:
         model = simsiam.builder.SimSiam(
             models.__dict__[args.arch], args.dim, args.pred_dim
