@@ -6,6 +6,7 @@
 
 import torch
 import torch.nn as nn
+from utilities import ema, set_requires_grad
 
 
 class BYOL(nn.Module):
@@ -58,7 +59,7 @@ class BYOL(nn.Module):
             nn.BatchNorm1d(dim, affine=False),
         )  # output layer
 
-        self.set_requires_grad(self.target_encoder, False)
+        set_requires_grad(self.target_encoder, False)
 
         if init_from_online:
             self.update_target(self.target_encoder, self.encoder, None)
@@ -102,21 +103,10 @@ class BYOL(nn.Module):
 
         return p1, p2, z1_t.detach(), z2_t.detach()
 
-    def set_requires_grad(model, val):
-        # function taken from:
-        # https://github.com/lucidrains/byol-pytorch
-        for param in model.parameters():
-            param.requires_grad = val
-
     def update_target(self, target_model, online_model, alpha=0.99):
-        def EMA(target_param, online_param, alpha):
-            if alpha is None:
-                return online_param
-            return alpha * target_param + (1 - alpha) * online_param
-
         target_state_dict = target_model.state_dict()
         for param in target_state_dict:
-            target_state_dict[param] = EMA(
+            target_state_dict[param] = ema(
                 target_state_dict[param], online_model.state_dict()[param], alpha
             )
         target_model.load_state_dict(target_state_dict)
