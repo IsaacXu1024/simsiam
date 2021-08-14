@@ -193,10 +193,10 @@ parser.add_argument(
     help="Alpha used for byol's EMA updates",
 )
 parser.add_argument(
-    "--init-target",
-    default=True,
+    "--byol-init-target-from-online",
+    default=False,
     type=bool,
-    help="Initialize byol target network from to have distinct weights from online",
+    help="Initialize byol target network weights from online weights",
 )
 
 
@@ -271,7 +271,10 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> creating model '{}'".format(args.arch))
     if args.byol:
         model = byol.builder.BYOL(
-            models.__dict__[args.arch], args.init_target, args.dim, args.pred_dim
+            models.__dict__[args.arch],
+            args.byol_init_target_from_online,
+            args.dim,
+            args.pred_dim,
         )
     else:
         model = simsiam.builder.SimSiam(
