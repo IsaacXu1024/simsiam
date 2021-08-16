@@ -28,8 +28,8 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torchvision.transforms as transforms
 
-import byol.builder
 import simsiam.builder
+import simsiam.ema_builder
 import simsiam.loader
 
 model_names = sorted(
@@ -181,22 +181,20 @@ parser.add_argument(
 
 # byol arguments
 parser.add_argument(
-    "--byol",
-    default=False,
-    type=bool,
-    help="Flag for whether or not the model is byol",
+    "--ema",
+    action="store_true",
+    help="Enable exponential moving average (EMA) for the teacher (BYOL model)",
 )
 parser.add_argument(
-    "--byol-alpha",
+    "--ema-alpha",
     default=0.99,
     type=float,
-    help="Alpha used for byol's EMA updates",
+    help="Momentum value for EMA updates to teacher model",
 )
 parser.add_argument(
-    "--byol-init-target-from-online",
-    default=False,
-    type=bool,
-    help="Initialize byol target network weights from online weights",
+    "--ema-init-target-from-online",
+    action="store_true",
+    help="Initialize target network weights from online weights",
 )
 
 
@@ -269,10 +267,10 @@ def main_worker(gpu, ngpus_per_node, args):
         torch.distributed.barrier()
     # create model
     print("=> creating model '{}'".format(args.arch))
-    if args.byol:
-        model = byol.builder.BYOL(
+    if args.ema:
+        model = simsiam.ema_builder.BYOL(
             models.__dict__[args.arch],
-            args.byol_init_target_from_online,
+            args.ema_init_target_from_online,
             args.dim,
             args.pred_dim,
         )
@@ -493,8 +491,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.step()
 
         # update target model if BYOL
-        if args.byol:
-            model.update_target(model.target_encoder, model.encoder, args.byol_alpha)
+        if args.ema:
+            model.update_target(model.target_encoder, model.encoder, args.ema_alpha)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
