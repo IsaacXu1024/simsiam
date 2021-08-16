@@ -29,7 +29,6 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 
 import simsiam.builder
-import simsiam.ema_builder
 import simsiam.loader
 
 model_names = sorted(
@@ -268,7 +267,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     if args.ema:
-        model = simsiam.ema_builder.BYOL(
+        model = simsiam.builder.BYOL(
             models.__dict__[args.arch],
             args.ema_init_target_from_online,
             args.dim,
