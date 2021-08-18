@@ -150,13 +150,13 @@ class BYOL(SimSiam):
 
         return p1, p2, z1_target, z2_target
 
-    def update_target(self, target_model, online_model, alpha=0.99):
-        target_state_dict = target_model.state_dict()
+    def update_target(self, alpha=0.99):
+        target_state_dict = self.target_encoder.state_dict()
         for param in target_state_dict:
             target_state_dict[param] = ema(
-                target_state_dict[param], online_model.state_dict()[param], alpha
+                target_state_dict[param], self.encoder.state_dict()[param], alpha
             )
-        target_model.load_state_dict(target_state_dict)
+        self.target_encoder.load_state_dict(target_state_dict)
 
 
 # utility functions

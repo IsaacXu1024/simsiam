@@ -491,7 +491,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         # update target model if BYOL
         if args.ema:
-            model.update_target(model.target_encoder, model.encoder, args.ema_alpha)
+            model.module.update_target(args.ema_alpha)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
