@@ -4,6 +4,8 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+from collections import OrderedDict
+
 import torch
 from torch import nn
 
@@ -186,12 +188,14 @@ class BYOL(SimSiam):
         if alpha is None:
             alpha = self.alpha
 
-        target_state_dict = self.target_encoder.state_dict()
-        for param in target_state_dict:
-            target_state_dict[param] = ema(
-                target_state_dict[param], self.encoder.state_dict()[param], alpha
-            )
-        self.target_encoder.load_state_dict(target_state_dict)
+        encoder_params = OrderedDict(self.encoder.named_parameters())
+        target_params = OrderedDict(self.target_encoder.named_parameters())
+
+        # check if both model contains the same set of keys
+        assert encoder_params.keys() == target_params.keys()
+
+        for name, param in target_params.items():
+            target_params[name] = ema(param, encoder_params[name], alpha)
 
 
 # utility functions
