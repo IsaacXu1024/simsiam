@@ -96,7 +96,9 @@ class BYOL(SimSiam):
         Hidden dimension of the predictor
     """
 
-    def __init__(self, base_encoder, init_target_from_online, dim=2048, pred_dim=512):
+    def __init__(
+        self, base_encoder, dim=2048, pred_dim=512, init_target_from_online=False
+    ):
         super(BYOL, self).__init__(base_encoder, dim, pred_dim)
 
         # build target model

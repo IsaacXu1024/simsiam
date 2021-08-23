@@ -269,9 +269,9 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.ema:
         model = simsiam.builder.BYOL(
             models.__dict__[args.arch],
-            args.ema_init_target_from_online,
             args.dim,
             args.pred_dim,
+            args.ema_init_target_from_online,
         )
     else:
         model = simsiam.builder.SimSiam(
