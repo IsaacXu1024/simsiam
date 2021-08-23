@@ -113,6 +113,8 @@ class BYOL(SimSiam):
             self.target_encoder.fc,
             nn.BatchNorm1d(dim, affine=False),
         )  # output layer
+        # hack: not use bias as it is followed by BN
+        self.encoder.fc[6].bias.requires_grad = False
 
         if init_target_from_online:
             self.target_encoder.load_state_dict(self.encoder.state_dict())
