@@ -267,6 +267,16 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     if args.ema:
+        if args.ema_init_target_from_online:
+            init_str = "online"
+        else:
+            init_str = "scratch"
+        print(
+            "   Using BYOL model with EMA alpha={}, target init from {},"
+            " dim={}, pred_dim={}".format(
+                args.ema_alpha, init_str, args.dim, args.pred_dim
+            )
+        )
         model = simsiam.builder.BYOL(
             models.__dict__[args.arch],
             dim=args.dim,
@@ -275,6 +285,11 @@ def main_worker(gpu, ngpus_per_node, args):
             alpha=args.ema_alpha,
         )
     else:
+        print(
+            "   Using SimSiam model, dim={}, pred_dim={}".format(
+                args.dim, args.pred_dim
+            )
+        )
         model = simsiam.builder.SimSiam(
             models.__dict__[args.arch], dim=args.dim, pred_dim=args.pred_dim
         )
