@@ -86,7 +86,13 @@ class SimSiam(nn.Module):
 
 class BYOL(SimSiam):
     """
-    Build a BYOL model.
+    Build a Bootstrap Your Own Latent (BYOL) model.
+
+    This is an implementation of `Bootstrap Your Own Latent <BYOL_>`.
+    It is structured similarly to the SimSiam model, except that the target
+    network is an exponential moving average of the online encoder network.
+
+    .. _BYOL: https://arxiv.org/abs/2006.07733
 
     Parameters
     ----------
