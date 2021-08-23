@@ -94,6 +94,9 @@ class BYOL(SimSiam):
         Feature dimension
     pred_dim : int, default=512
         Hidden dimension of the predictor
+    init_target_from_online : bool, default=False
+        Whether to initialize the target network as having the same weights as
+        the encoder. Default behaviour is to use a random initialization.
     """
 
     def __init__(
