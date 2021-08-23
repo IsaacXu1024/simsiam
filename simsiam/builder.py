@@ -143,8 +143,9 @@ class BYOL(SimSiam):
         # compute features for one view
         z1 = self.encoder(x1)  # NxC
         z2 = self.encoder(x2)  # NxC
-        z1_target = self.target_encoder(x1)
-        z2_target = self.target_encoder(x2)
+        with torch.no_grad():
+            z1_target = self.target_encoder(x1)
+            z2_target = self.target_encoder(x2)
 
         p1 = self.predictor(z1)  # NxC
         p2 = self.predictor(z2)  # NxC
