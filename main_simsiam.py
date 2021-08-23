@@ -269,13 +269,13 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.ema:
         model = simsiam.builder.BYOL(
             models.__dict__[args.arch],
-            args.dim,
-            args.pred_dim,
-            args.ema_init_target_from_online,
+            dim=args.dim,
+            pred_dim=args.pred_dim,
+            init_target_from_online=args.ema_init_target_from_online,
         )
     else:
         model = simsiam.builder.SimSiam(
-            models.__dict__[args.arch], args.dim, args.pred_dim
+            models.__dict__[args.arch], dim=args.dim, pred_dim=args.pred_dim
         )
 
     # infer learning rate before changing batch size
