@@ -137,10 +137,12 @@ class BYOL(SimSiam):
             First view of images.
         x2 : torch.Tensor
             Second view of images.
+
         Return
         ------
         p1, p2, z1, z2 :
             online predictors and target projections of the networks
+
         Note
         ----
         See https://arxiv.org/abs/2006.07733 for detailed notations
