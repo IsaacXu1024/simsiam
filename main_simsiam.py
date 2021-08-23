@@ -272,6 +272,7 @@ def main_worker(gpu, ngpus_per_node, args):
             dim=args.dim,
             pred_dim=args.pred_dim,
             init_target_from_online=args.ema_init_target_from_online,
+            alpha=args.ema_alpha,
         )
     else:
         model = simsiam.builder.SimSiam(
@@ -491,7 +492,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         # update target model if BYOL
         if args.ema:
-            model.module.update_target(args.ema_alpha)
+            model.module.update_target()
 
         # measure elapsed time
         batch_time.update(time.time() - end)

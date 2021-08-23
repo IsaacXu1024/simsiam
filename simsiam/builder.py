@@ -97,12 +97,24 @@ class BYOL(SimSiam):
     init_target_from_online : bool, default=False
         Whether to initialize the target network as having the same weights as
         the encoder. Default behaviour is to use a random initialization.
+    alpha : float or None, default=0.99
+        Weight term for exponential moving average. Larger values will cause
+        the network parameters to update slower.
+        If ``alpha`` is ``None``, EMA will be disabled and the target network
+        will be a mirror of the encoder instead.
     """
 
     def __init__(
-        self, base_encoder, dim=2048, pred_dim=512, init_target_from_online=False
+        self,
+        base_encoder,
+        dim=2048,
+        pred_dim=512,
+        init_target_from_online=False,
+        alpha=0.99,
     ):
         super(BYOL, self).__init__(base_encoder, dim, pred_dim)
+
+        self.alpha = alpha
 
         # build target model
         self.target_encoder = base_encoder(num_classes=dim, zero_init_residual=True)
@@ -160,7 +172,20 @@ class BYOL(SimSiam):
 
         return p1, p2, z1_target, z2_target
 
-    def update_target(self, alpha=0.99):
+    def update_target(self, alpha=None):
+        """
+        Update target network as the exponential moving average of the encoder.
+
+        Parameters
+        ----------
+        alpha : float, optional
+            The exponential decay weight. The default value is the
+            :attr:`alpha` attribute of the object, which was set when it
+            was instantiated.
+        """
+        if alpha is None:
+            alpha = self.alpha
+
         target_state_dict = self.target_encoder.state_dict()
         for param in target_state_dict:
             target_state_dict[param] = ema(
