@@ -59,6 +59,7 @@ echo ""
 # Input handling
 DATASET="$1"
 echo "DATASET = $DATASET"
+echo "EXTRA_ARGS = ${@:2}"
 echo ""
 echo "------------------------------------------------------------------------"
 echo ""
@@ -213,7 +214,8 @@ python main_simsiam.py \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/checkpoint_latest.pt" \
-    "$DATA_DIR"
+    "$DATA_DIR" \
+    "${@:2}"
 
 echo ""
 echo "------------------------------------------------------------------------"

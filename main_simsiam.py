@@ -178,6 +178,28 @@ parser.add_argument(
     "--fix-pred-lr", action="store_true", help="Fix learning rate for the predictor"
 )
 
+# byol arguments
+parser.add_argument(
+    "--ema",
+    nargs="?",
+    const=0.99,
+    type=float,
+    metavar="ALPHA",
+    help=(
+        "Momentum value for exponential moving average updates to teacher"
+        " model (BYOL model)."
+        " If --ema is supplied without specifying ALPHA, the default ALPHA"
+        " value of %(const)s is used."
+        " If this argument is not supplied (default), a SimSiam model is"
+        " trained instead."
+    ),
+)
+parser.add_argument(
+    "--ema-init-target-from-online",
+    action="store_true",
+    help="Initialize target network weights from online weights",
+)
+
 
 def main():
     args = parser.parse_args()
@@ -248,7 +270,31 @@ def main_worker(gpu, ngpus_per_node, args):
         torch.distributed.barrier()
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = simsiam.builder.SimSiam(models.__dict__[args.arch], args.dim, args.pred_dim)
+    if args.ema is not None:
+        if args.ema_init_target_from_online:
+            init_str = "online"
+        else:
+            init_str = "scratch"
+        print(
+            "   Using BYOL model with EMA alpha={}, target init from {},"
+            " dim={}, pred_dim={}".format(args.ema, init_str, args.dim, args.pred_dim)
+        )
+        model = simsiam.builder.BYOL(
+            models.__dict__[args.arch],
+            dim=args.dim,
+            pred_dim=args.pred_dim,
+            init_target_from_online=args.ema_init_target_from_online,
+            alpha=args.ema,
+        )
+    else:
+        print(
+            "   Using SimSiam model, dim={}, pred_dim={}".format(
+                args.dim, args.pred_dim
+            )
+        )
+        model = simsiam.builder.SimSiam(
+            models.__dict__[args.arch], dim=args.dim, pred_dim=args.pred_dim
+        )
 
     # infer learning rate before changing batch size
     init_lr = args.lr * args.batch_size / 256
@@ -460,6 +506,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        # update target model if BYOL
+        if args.ema:
+            model.module.update_target()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
