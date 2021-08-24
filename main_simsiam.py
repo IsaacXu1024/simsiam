@@ -181,14 +181,18 @@ parser.add_argument(
 # byol arguments
 parser.add_argument(
     "--ema",
-    action="store_true",
-    help="Enable exponential moving average (EMA) for the teacher (BYOL model)",
-)
-parser.add_argument(
-    "--ema-alpha",
-    default=0.99,
+    nargs="?",
+    const=0.99,
     type=float,
-    help="Momentum value for EMA updates to teacher model",
+    metavar="ALPHA",
+    help=(
+        "Momentum value for exponential moving average updates to teacher"
+        " model (BYOL model)."
+        " If --ema is supplied without specifying ALPHA, the default ALPHA"
+        " value of %(const)s is used."
+        " If this argument is not supplied (default), a SimSiam model is"
+        " trained instead."
+    ),
 )
 parser.add_argument(
     "--ema-init-target-from-online",
@@ -266,23 +270,21 @@ def main_worker(gpu, ngpus_per_node, args):
         torch.distributed.barrier()
     # create model
     print("=> creating model '{}'".format(args.arch))
-    if args.ema:
+    if args.ema is not None:
         if args.ema_init_target_from_online:
             init_str = "online"
         else:
             init_str = "scratch"
         print(
             "   Using BYOL model with EMA alpha={}, target init from {},"
-            " dim={}, pred_dim={}".format(
-                args.ema_alpha, init_str, args.dim, args.pred_dim
-            )
+            " dim={}, pred_dim={}".format(args.ema, init_str, args.dim, args.pred_dim)
         )
         model = simsiam.builder.BYOL(
             models.__dict__[args.arch],
             dim=args.dim,
             pred_dim=args.pred_dim,
             init_target_from_online=args.ema_init_target_from_online,
-            alpha=args.ema_alpha,
+            alpha=args.ema,
         )
     else:
         print(
