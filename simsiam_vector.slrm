@@ -218,6 +218,11 @@ python main_simsiam.py \
     "${@:2}"
 
 echo ""
+OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+echo "Copying output checkouts from $CKPT_DIR to $OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
+rsync -rvz "$CKPT_DIR/" "$OUTPUT_DIR" &
+
 echo "------------------------------------------------------------------------"
 echo ""
 date
@@ -239,3 +244,9 @@ python main_lincls.py \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
     "$DATA_DIR"
+
+echo ""
+OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+echo "Copying output checkouts from $CKPT_DIR to $OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
+rsync -rvz "$CKPT_DIR/" "$OUTPUT_DIR"
