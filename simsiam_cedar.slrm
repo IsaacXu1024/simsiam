@@ -150,7 +150,7 @@ echo "ls -lh ${SLURM_TMPDIR}:"
 ls -lh "${SLURM_TMPDIR}"
 echo ""
 
-DATA_DIR="${SLURM_TMPDIR}/datasets/$DATASET"
+DATA_DIR="${SLURM_TMPDIR}/datasets"
 rm -rf "$DATA_DIR"
 mkdir -p "$DATA_DIR"
 
@@ -176,6 +176,7 @@ date
 echo ""
 
 if [ "$DATASET" == "imagenet" ]; then
+    DATA_DIR="$DATA_DIR/$DATASET"
     echo "# Copying imagenet dataset to local node's SSD storage, ${DATA_DIR}"
 
     rsync -vz /project/rrg-ttt/datasets/imagenet/* "${DATA_DIR}/"
@@ -209,7 +210,7 @@ if [ "$DATASET" == "imagenet" ]; then
     #  # Should be 50000
 
 elif [ "$DATASET" == "imagenette2-160" ]; then
-    echo ""
+    DATA_DIR="$DATA_DIR/$DATASET"
     echo "# Copying imagenette2-160 dataset to local node's SSD storage, ${DATA_DIR}"
 
     rsync -zv "/project/rrg-ttt/datasets/imagenette2/imagenette2-160.tgz" "${DATA_DIR}/"
@@ -218,6 +219,32 @@ elif [ "$DATASET" == "imagenette2-160" ]; then
     echo "Extracting data"
     tar -C "${DATA_DIR}" -xf "${DATA_DIR}/imagenette2-160.tgz"
     DATA_DIR="$DATA_DIR/imagenette2-160"
+
+elif [ -d "$DATASET" ]; then
+    echo ""
+    echo "# Copying directory $DATASET to local node's SSD storage, ${DATA_DIR}"
+    rsync -zv "$DATASET" "${DATA_DIR}/"
+
+elif [ -f "$DATASET" ]; then
+    echo ""
+
+    DATASET_FNAME="${DATASET##*/}"
+    DATASET_NAME="${DATASET_FNAME%%.*}"
+    DATASET_EXT="${DATASET_FNAME#*.}"
+    TARGET_FNAME="${DATA_DIR}/${DATASET_FNAME}"
+
+    if [ "$DATASET_EXT" == "tar.gz" ] || [ "$DATASET_EXT" == "tgz" ] || [ "$DATASET_EXT" == "tar" ]; then
+        echo ""
+    else
+        echo "Unsupported file extension: $DATASET_EXT"
+        exit;
+    fi
+    echo "# Copying file $DATASET to local node's SSD storage, ${DATA_DIR}"
+    rsync -zv "$DATASET" "${DATA_DIR}/"
+
+    echo "Untarring file $TARGET_FNAME"
+    tar -C "${DATA_DIR}" -xf "$TARGET_FNAME"
+    DATA_DIR="$DATA_DIR/$DATASET_NAME"
 
 else
     echo "Invalid dataset name: $DATASET"
