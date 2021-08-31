@@ -146,6 +146,7 @@ touch "$CKPT_DIR/DELAYPURGE"
 # directory as well
 OUTPUT_DIR="/scratch/hdd001/home/$USER/checkpoints/simsiam"
 ln -sfn "$OUTPUT_DIR" "checkpoints"
+JOB_OUTPUT_DIR="$OUTPUT_DIR/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 
 echo ""
 echo "df -h:"
@@ -225,7 +226,6 @@ python main_simsiam.py \
     "${@:2}"
 
 echo ""
-JOB_OUTPUT_DIR="$OUTPUT_DIR/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 CKPT_SOURCE=$(readlink "$CKPT_DIR/checkpoint_latest.pt")
 echo "Copying output checkpoint $CKPT_SOURCE to $JOB_OUTPUT_DIR"
 mkdir -p "$JOB_OUTPUT_DIR"

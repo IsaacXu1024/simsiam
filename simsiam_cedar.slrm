@@ -165,6 +165,11 @@ echo "ls -lh ${CKPT_DIR}:"
 ls -lh "${CKPT_DIR}"
 echo ""
 
+# Specify where to place checkpoints for long term storage once the job is
+# finished
+OUTPUT_DIR="$PWD/checkpoints"
+JOB_OUTPUT_DIR="$OUTPUT_DIR/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+
 # -------------------------------------------------------------------------
 echo ""
 date
@@ -268,7 +273,6 @@ python main_simsiam.py \
     "${@:2}"
 
 echo ""
-JOB_OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 CKPT_SOURCE=$(readlink "$CKPT_DIR/checkpoint_latest.pt")
 echo "Copying output checkpoint $CKPT_DIR to $JOB_OUTPUT_DIR"
 mkdir -p "$JOB_OUTPUT_DIR"
