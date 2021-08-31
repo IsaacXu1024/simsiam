@@ -172,6 +172,10 @@ if [ "$DATASET" == "imagenet" ]; then
 elif [ "$DATASET" == "imagenette2-160" ]; then
     DATA_DIR="/scratch/ssd004/datasets/imagenette2/160"
 
+elif [ -d "$DATASET" ]; then
+    echo "Using dataset source $DATASET"
+    DATA_DIR="$DATASET"
+
 else
     echo "Invalid dataset name: $DATASET"
     exit;
