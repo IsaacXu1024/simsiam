@@ -219,7 +219,7 @@ python main_simsiam.py \
     "${@:2}"
 
 echo ""
-OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+OUTPUT_DIR="/scratch/hdd001/home/$USER/checkpoints/simsiam/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 echo "Copying output checkouts from $CKPT_DIR to $OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 rsync -rvz "$CKPT_DIR/" "$OUTPUT_DIR" &
@@ -247,7 +247,7 @@ python main_lincls.py \
     "$DATA_DIR"
 
 echo ""
-OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+OUTPUT_DIR="/scratch/hdd001/home/$USER/checkpoints/simsiam/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 echo "Copying output checkouts from $CKPT_DIR to $OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 rsync -rvz "$CKPT_DIR/" "$OUTPUT_DIR"
