@@ -132,7 +132,8 @@ CKPT_DIR="/checkpoint/${USER}/${SLURM_JOB_ID}"
 # We also recommend users to create a symlink of the checkpoint dir so your
 # training code stays the same with regards to different job IDs and it would
 # be easier to navigate the checkpoint directory under your job's working directory
-ln -sfn "$CKPT_DIR" "$PWD/checkpoint"
+mkdir -p "checkpoint"
+ln -sfn "$CKPT_DIR" "$PWD/checkpoint/${SLURM_JOB_ID}"
 
 # In the future, the checkpoint directory will be removed immediately after the
 # job has finished. If you would like the file to stay longer, and create an
@@ -218,6 +219,14 @@ python main_simsiam.py \
     "${@:2}"
 
 echo ""
+OUTPUT_DIR="/scratch/hdd001/home/$USER/checkpoints/simsiam/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+CKPT_SOURCE=$(readlink "$CKPT_DIR/checkpoint_latest.pt")
+echo "Copying output checkpoint $CKPT_SOURCE to $OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
+rsync -rvz "$CKPT_SOURCE" "$OUTPUT_DIR"
+ln -sfn "${CKPT_SOURCE##*/}" "$OUTPUT_DIR/checkpoint_latest.pt"
+
+echo ""
 echo "------------------------------------------------------------------------"
 echo ""
 date
@@ -239,3 +248,10 @@ python main_lincls.py \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
     "$DATA_DIR"
+
+echo ""
+CKPT_SOURCE=$(readlink "$CKPT_DIR/lincls_checkpoint_latest.pt")
+echo "Copying output checkpoint $CKPT_SOURCE to $OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
+rsync -rvz "$CKPT_SOURCE" "$OUTPUT_DIR"
+ln -sfn "${CKPT_SOURCE##*/}" "$OUTPUT_DIR/lincls_checkpoint_latest.pt"
