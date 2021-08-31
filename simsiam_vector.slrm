@@ -124,7 +124,7 @@ echo ""
 echo "------------------------------------------------------------------------"
 echo "# Handling data and checkpoint paths"
 
-# Vector provides a fast parallel filesystem local to the GPU nodes,  dedicated
+# Vector provides a fast parallel filesystem local to the GPU nodes, dedicated
 # for checkpointing. It is mounted under /checkpoint. It is strongly
 # recommended that you keep your intermediary checkpoints under this directory
 CKPT_DIR="/checkpoint/${USER}/${SLURM_JOB_ID}"
@@ -140,6 +140,13 @@ ln -sfn "$CKPT_DIR" "$PWD/checkpoint/${SLURM_JOB_ID}"
 # empty "delay purge" file as a flag so the system will delay the removal for
 # 48 hours
 touch "$CKPT_DIR/DELAYPURGE"
+
+# Specify where to place checkpoints for long term storage once the job is
+# finished, and ensure this directory is added as a symlink within the current
+# directory as well
+OUTPUT_DIR="/scratch/hdd001/home/$USER/checkpoints/simsiam"
+ln -sfn "$OUTPUT_DIR" "checkpoints"
+JOB_OUTPUT_DIR="$OUTPUT_DIR/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 
 echo ""
 echo "df -h:"
@@ -219,12 +226,11 @@ python main_simsiam.py \
     "${@:2}"
 
 echo ""
-OUTPUT_DIR="/scratch/hdd001/home/$USER/checkpoints/simsiam/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
 CKPT_SOURCE=$(readlink "$CKPT_DIR/checkpoint_latest.pt")
-echo "Copying output checkpoint $CKPT_SOURCE to $OUTPUT_DIR"
-mkdir -p "$OUTPUT_DIR"
-rsync -rvz "$CKPT_SOURCE" "$OUTPUT_DIR"
-ln -sfn "${CKPT_SOURCE##*/}" "$OUTPUT_DIR/checkpoint_latest.pt"
+echo "Copying output checkpoint $CKPT_SOURCE to $JOB_OUTPUT_DIR"
+mkdir -p "$JOB_OUTPUT_DIR"
+rsync -rvz "$CKPT_SOURCE" "$JOB_OUTPUT_DIR"
+ln -sfn "${CKPT_SOURCE##*/}" "$JOB_OUTPUT_DIR/checkpoint_latest.pt"
 
 echo ""
 echo "------------------------------------------------------------------------"
@@ -251,7 +257,7 @@ python main_lincls.py \
 
 echo ""
 CKPT_SOURCE=$(readlink "$CKPT_DIR/lincls_checkpoint_latest.pt")
-echo "Copying output checkpoint $CKPT_SOURCE to $OUTPUT_DIR"
-mkdir -p "$OUTPUT_DIR"
-rsync -rvz "$CKPT_SOURCE" "$OUTPUT_DIR"
-ln -sfn "${CKPT_SOURCE##*/}" "$OUTPUT_DIR/lincls_checkpoint_latest.pt"
+echo "Copying output checkpoint $CKPT_SOURCE to $JOB_OUTPUT_DIR"
+mkdir -p "$JOB_OUTPUT_DIR"
+rsync -rvz "$CKPT_SOURCE" "$JOB_OUTPUT_DIR"
+ln -sfn "${CKPT_SOURCE##*/}" "$JOB_OUTPUT_DIR/lincls_checkpoint_latest.pt"
