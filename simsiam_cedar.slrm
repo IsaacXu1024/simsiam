@@ -269,9 +269,11 @@ python main_simsiam.py \
 
 echo ""
 OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+CKPT_SOURCE=$(readlink "$CKPT_DIR/checkpoint_latest.pt")
 echo "Copying output checkouts from $CKPT_DIR to $OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
-rsync -rvz "$CKPT_DIR/" "$OUTPUT_DIR" &
+rsync -rvz "$CKPT_SOURCE" "$OUTPUT_DIR"
+ln -sfn "${CKPT_SOURCE##*/}" "$OUTPUT_DIR/checkpoint_latest.pt"
 
 echo ""
 echo "------------------------------------------------------------------------"
@@ -297,7 +299,8 @@ python main_lincls.py \
     "$DATA_DIR"
 
 echo ""
-OUTPUT_DIR="$PWD/checkpoints/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+CKPT_SOURCE=$(readlink "$CKPT_DIR/lincls_checkpoint_latest.pt")
 echo "Copying output checkouts from $CKPT_DIR to $OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
-rsync -rvz "$CKPT_DIR/" "$OUTPUT_DIR"
+rsync -rvz "$CKPT_SOURCE" "$OUTPUT_DIR"
+ln -sfn "${CKPT_SOURCE##*/}" "$OUTPUT_DIR/lincls_checkpoint_latest.pt"
