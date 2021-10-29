@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=72:00:00             # max walltime, hh:mm:ss
+#SBATCH --time=00:30:00             # max walltime, hh:mm:ss
 #SBATCH --nodes 1                   # Number of nodes to request
 #SBATCH --gres=gpu:2                # Number of GPUs per node to request
 #SBATCH --tasks-per-node=1          # Number of processes to spawn per node
@@ -9,7 +9,7 @@
                                     # %x=job-name, %A=job ID, %a=array value, %n=node rank, %t=task rank, %N=hostname
                                     # Note: You must manually create output directory "logs" before launching job.
 #SBATCH --job-name=simsiam
-#SBATCH --account=desired_account   # Use default account
+#SBATCH --account=def-ttt   # Use default account
 
 # Manually define this variable to be equal to the number of GPUs in the --gres argument above
 GPUS_PER_NODE=2
@@ -105,7 +105,6 @@ python -m pip install \
     -f https://download.pytorch.org/whl/torch_stable.html
 
 python -m pip install -r requirements.txt
-python -m pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" git+https://github.com/NVIDIA/apex
 
 echo "------------------------------------------------------------------------"
 echo ""
@@ -286,11 +285,12 @@ echo "N_WORKERS  = $N_WORKERS"
 #
 # To do unsupervised pre-training of a ResNet-50 model on ImageNet, run:
 python main_simsiam.py \
-    -a resnet50 \
+    -a resnet18 \
     --dist-url 'tcp://localhost:10001' \
     --multiprocessing-distributed \
     --world-size "$SLURM_JOB_NUM_NODES" \
     --rank 0 \
+	--epochs 5 \
     --fix-pred-lr \
     --workers "$N_WORKERS" \
     --batch-size "$BATCH_SIZE" \
@@ -316,11 +316,12 @@ echo ""
 echo "Training linear classifier"
 # With a pre-trained model, to train a supervised linear classifier on frozen features/weights
 python main_lincls.py \
-    -a resnet50 \
+    -a resnet18 \
     --dist-url 'tcp://localhost:10001' \
     --multiprocessing-distributed \
     --world-size "$SLURM_JOB_NUM_NODES" \
     --rank 0 \
+	--epochs 5 \
     --pretrained "$CKPT_DIR/checkpoint_latest.pt" \
     --lars \
     --workers "$N_WORKERS" \
