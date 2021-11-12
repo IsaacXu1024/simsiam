@@ -115,9 +115,12 @@ export MAIN_HOST="$MASTER_ADDR"
 echo "r$SLURM_NODEID master: $MASTER_ADDR"
 echo "r$SLURM_NODEID Launching python script"
 
+# Get the address of an open socket
+source "slurm/get_socket.sh"
+
 # Launch your script
 echo ""
-echo "# Main script begins with host tcp://localhost:10001 with backend nccl"
+echo "# Main script begins with host tcp://localhost:$JOB_SOCKET with backend nccl"
 echo ""
 
 # Unsupervised Pre-Training
@@ -139,7 +142,7 @@ echo "N_WORKERS  = $N_WORKERS"
 python main_simsiam.py \
     "$DATA_DIR" \
     -a resnet50 \
-    --dist-url 'tcp://localhost:10001' \
+    --dist-url "tcp://localhost:$JOB_SOCKET" \
     --multiprocessing-distributed \
     --world-size "$SLURM_JOB_NUM_NODES" \
     --rank 0 \
@@ -164,7 +167,7 @@ echo "Training linear classifier"
 python main_lincls.py \
     "$DATA_DIR" \
     -a resnet50 \
-    --dist-url 'tcp://localhost:10001' \
+    --dist-url "tcp://localhost:$JOB_SOCKET" \
     --multiprocessing-distributed \
     --world-size "$SLURM_JOB_NUM_NODES" \
     --rank 0 \
