@@ -136,7 +136,7 @@ if [ "$DATASET" == "imagenet" ]; then
     #  find val/ -name "*.JPEG" | wc -l
     #  # Should be 50000
 
-elif [ "$DATASET" == "imagenette2-160" ]; then
+elif [ "$DATASET" == "imagenette2-160" ] || [ "$DATASET" == "imagenette" ]; then
     DATA_DIR="$ROOT_DATA_DIR/$DATASET"
     echo "# Copying imagenette2-160 dataset to local node's SSD storage, ${DATA_DIR}"
 
