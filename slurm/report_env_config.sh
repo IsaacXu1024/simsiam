@@ -14,13 +14,13 @@ echo "python version:"
 python --version
 echo ""
 echo "which conda:"
-which conda
+which conda || echo "No conda"
 echo ""
 echo "conda info:"
-conda info
+conda info || echo "No conda"
 echo ""
 echo "conda env export:"
-conda env export
+conda env export || echo "No conda env"
 echo ""
 echo "which pip:"
 which pip
@@ -30,13 +30,13 @@ echo ""
 pip freeze
 echo ""
 echo "which nvcc:"
-which nvcc
+which nvcc || echo "No nvcc"
 echo ""
 echo "nvcc version:"
-nvcc --version
+nvcc --version || echo "No nvcc"
 echo ""
 echo "nvidia-smi:"
-nvidia-smi
+nvidia-smi || echo "No nvidia-smi"
 echo ""
 echo "torch info:"
 python -c "import torch; print('pytorch={}, cuda={}, gpus={}'.format(torch.__version__, torch.cuda.is_available(), torch.cuda.device_count()))"

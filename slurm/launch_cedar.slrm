@@ -14,63 +14,48 @@
 # Manually define this variable to be equal to the number of GPUs in the --gres argument above
 GPUS_PER_NODE=2
 
+# Manually define the project name.
+# This should also be the name of your conda environment used for this project.
+PROJECT_NAME=simsiam
+
+# Exit if any command hits an error
+set -e
+
 # sbatch for Graham/Cedar
 # Based on https://docs.computecanada.ca/wiki/PyTorch/en
 # and https://github.com/facebookresearch/simsiam/blob/main/README.md
 
+# Store the time at which the script was launched
+start_time="$SECONDS"
+
+# Print slurm config report
+source "slurm/report_slurm_config.sh"
+# Print repo status report
+source "slurm/report_repo.sh"
+
+echo ""
+echo "-------- Input handling ------------------------------------------------"
 date
-echo ""
-echo "Job $SLURM_JOB_NAME ($SLURM_JOB_ID) begins on $SLURM_NODENAME, submitted from $SLURM_SUBMIT_HOST ($SLURM_CLUSTER_NAME)"
-echo ""
-echo "Main script will run on host tcp://localhost:10001 with backend nccl"
-echo ""
-echo "SLURM_CLUSTER_NAME      = $SLURM_CLUSTER_NAME"        # Name of the cluster on which the job is executing.
-echo "SLURM_NODENAME          = $SLURM_NODENAME"
-echo "SLURM_JOB_QOS           = $SLURM_JOB_QOS"             # Quality Of Service (QOS) of the job allocation.
-echo "SLURM_JOB_ID            = $SLURM_JOB_ID"              # The ID of the job allocation.
-echo "SLURM_RESTART_COUNT     = $SLURM_RESTART_COUNT"       # The number of times the job has been restarted.
-if [ "$SLURM_ARRAY_TASK_COUNT" != "" ] && [ "$SLURM_ARRAY_TASK_COUNT" -gt 1 ]; then
-    echo ""
-    echo "SLURM_ARRAY_JOB_ID      = $SLURM_ARRAY_JOB_ID"        # Job array's master job ID number.
-    echo "SLURM_ARRAY_TASK_COUNT  = $SLURM_ARRAY_TASK_COUNT"    # Total number of tasks in a job array.
-    echo "SLURM_ARRAY_TASK_ID     = $SLURM_ARRAY_TASK_ID"       # Job array ID (index) number.
-    echo "SLURM_ARRAY_TASK_MAX    = $SLURM_ARRAY_TASK_MAX"      # Job array's maximum ID (index) number.
-    echo "SLURM_ARRAY_TASK_STEP   = $SLURM_ARRAY_TASK_STEP"     # Job array's index step size.
-fi;
-echo ""
-echo "SLURM_JOB_NUM_NODES     = $SLURM_JOB_NUM_NODES"       # Total number of nodes in the job's resource allocation.
-echo "SLURM_JOB_NODELIST      = $SLURM_JOB_NODELIST"        # List of nodes allocated to the job.
-echo "SLURM_TASKS_PER_NODE    = $SLURM_TASKS_PER_NODE"      # Number of tasks to be initiated on each node.
-echo "SLURM_NTASKS            = $SLURM_NTASKS"              # Number of tasks to spawn.
-echo "SLURM_PROCID            = $SLURM_PROCID"              # The MPI rank (or relative process ID) of the current process
-echo ""
-echo "SBATCH_GRES             = $SBATCH_GRES"               # Same as --gres
-echo "GPUS_PER_NODE           = $GPUS_PER_NODE"             # Number of GPUs requested. Only set if the -G, --gpus option is specified.
-echo "SLURM_CPUS_ON_NODE      = $SLURM_CPUS_ON_NODE"        # Number of CPUs allocated to the batch step.
-echo "SLURM_JOB_CPUS_PER_NODE = $SLURM_JOB_CPUS_PER_NODE"   # Count of CPUs available to the job on the nodes in the allocation.
-echo "SLURM_CPUS_PER_TASK     = $SLURM_CPUS_PER_TASK"       # Number of cpus requested per task. Only set if the --cpus-per-task option is specified.
-echo ""
-echo "------------------------------------------------------------------------"
 echo ""
 # Input handling
 DATASET="$1"
-echo "DATASET = $DATASET"
-echo "EXTRA_ARGS = ${@:2}"
+shift
+echo "DATASET    = $DATASET"
+
+# Take required positional variables out one at a time, using shift to
+# pop the argument from the list:
+
+# ARG_NAME="$1" && shift
+# echo "ARG_NAME = $ARG_NAME"
+
+# Any remaining arguments will be passed through to the main script later
+# (The pass-through works like *args or **kwargs in python.)
+echo "EXTRA_ARGS = ${@}"
 echo ""
-echo "------------------------------------------------------------------------"
-echo ""
-pwd
-echo ""
-echo "commit ref:"
-git rev-parse HEAD
-echo ""
-git status
-echo ""
-echo "------------------------------------------------------------------------"
-echo ""
+
+echo "-------- Environment set up --------------------------------------------"
 date
 echo ""
-echo "# Starting environment set up"
 
 # Load CC modules
 echo ""
@@ -107,76 +92,29 @@ python -m pip install \
 python -m pip install -r requirements.txt
 python -m pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" git+https://github.com/NVIDIA/apex
 
-echo "------------------------------------------------------------------------"
-echo ""
-date
-echo ""
-echo "# Debugging outputs"
-echo ""
-echo "pwd:"
-pwd
-echo ""
-echo "python --version"
-python --version
-echo ""
-echo "which pip:"
-which pip
-echo ""
-echo "pip freeze:"
-echo ""
-pip freeze
-echo ""
-echo "which nvcc:"
-which nvcc
-echo ""
-echo "nvcc --version"
-nvcc --version
-echo ""
-echo "nvidia-smi"
-nvidia-smi
-echo ""
-python -c "import torch; print('pytorch={}, cuda={}, gpus={}'.format(torch.__version__, torch.cuda.is_available(), torch.cuda.device_count()))"
-echo ""
-python -c "import torch; print(str(torch.zeros(2, device=torch.device('cuda')))); print('able to use cuda')"
-echo ""
-echo "------------------------------------------------------------------------"
-echo "# Handling data on the node"
-echo ""
-echo "df -h:"
-df -h
-echo ""
+# Print env status
+source "slurm/report_env_config.sh"
 
-echo "ls -lh ${SLURM_TMPDIR}:"
-ls -lh "${SLURM_TMPDIR}"
-echo ""
+# Set checkpoint and output path environment variables
+source "slurm/set_output_paths_cedar.sh"
 
-DATA_DIR="${SLURM_TMPDIR}/datasets"
-rm -rf "$DATA_DIR"
-mkdir -p "$DATA_DIR"
+if [[ "$SLURM_RESTART_COUNT" > 0 && ! -f "$CKPT_DIR/checkpoint_latest.pt" ]];
+then
+    echo ""
+    echo "===================================="
+    echo "WARNING:"
+    echo "    Resuming after pre-emption (SLURM_RESTART_COUNT=$SLURM_RESTART_COUNT)"
+    echo "    but there is no checkpoint file at $CKPT_DIR/checkpoint_latest.pt"
+    echo "===================================="
+    echo ""
+fi;
 
-echo "ls -lh ${DATA_DIR}:"
-ls -lh "${DATA_DIR}"
-echo ""
-
-CKPT_DIR="${SLURM_TMPDIR}/checkpoint"
-mkdir -p "$CKPT_DIR"
-
-echo "ls -lh ${CKPT_DIR}:"
-ls -lh "${CKPT_DIR}"
-echo ""
-
-# Specify where to place checkpoints for long term storage once the job is
-# finished
-OUTPUT_DIR="$PWD/checkpoints"
-JOB_OUTPUT_DIR="$OUTPUT_DIR/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
-
-# -------------------------------------------------------------------------
-echo ""
+echo "-------- Dataset transfer ---------------------------------------------"
 date
 echo ""
 
 if [ "$DATASET" == "imagenet" ]; then
-    DATA_DIR="$DATA_DIR/$DATASET"
+    DATA_DIR="$ROOT_DATA_DIR/$DATASET"
     echo "# Copying imagenet dataset to local node's SSD storage, ${DATA_DIR}"
 
     rsync -vz /project/rrg-ttt/datasets/imagenet/* "${DATA_DIR}/"
@@ -210,7 +148,7 @@ if [ "$DATASET" == "imagenet" ]; then
     #  # Should be 50000
 
 elif [ "$DATASET" == "imagenette2-160" ]; then
-    DATA_DIR="$DATA_DIR/$DATASET"
+    DATA_DIR="$ROOT_DATA_DIR/$DATASET"
     echo "# Copying imagenette2-160 dataset to local node's SSD storage, ${DATA_DIR}"
 
     rsync -zv "/project/rrg-ttt/datasets/imagenette2/imagenette2-160.tgz" "${DATA_DIR}/"
@@ -231,7 +169,7 @@ elif [ -f "$DATASET" ]; then
     DATASET_FNAME="${DATASET##*/}"
     DATASET_NAME="${DATASET_FNAME%%.*}"
     DATASET_EXT="${DATASET_FNAME#*.}"
-    TARGET_FNAME="${DATA_DIR}/${DATASET_FNAME}"
+    TARGET_FNAME="${ROOT_DATA_DIR}/${DATASET_FNAME}"
 
     if [ "$DATASET_EXT" == "tar.gz" ] || [ "$DATASET_EXT" == "tgz" ] || [ "$DATASET_EXT" == "tar" ]; then
         echo ""
@@ -240,11 +178,11 @@ elif [ -f "$DATASET" ]; then
         exit;
     fi
     echo "# Copying file $DATASET to local node's SSD storage, ${DATA_DIR}"
-    rsync -zv "$DATASET" "${DATA_DIR}/"
+    rsync -zv "$DATASET" "${ROOT_DATA_DIR}/"
 
     echo "Untarring file $TARGET_FNAME"
-    tar -C "${DATA_DIR}" -xf "$TARGET_FNAME"
-    DATA_DIR="$DATA_DIR/$DATASET_NAME"
+    tar -C "${ROOT_DATA_DIR}" -xf "$TARGET_FNAME"
+    DATA_DIR="$ROOT_DATA_DIR/$DATASET_NAME"
 
 else
     echo "Invalid dataset name: $DATASET"
@@ -252,14 +190,27 @@ else
 
 fi
 
-echo ""
+if [[ "$start_time" != "" ]];
+then
+    echo "------------------------------------"
+    elapsed=$(( SECONDS - start_time ))
+    eval "echo Running total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+fi
 echo "------------------------------------------------------------------------"
+
 echo ""
+echo "-------- Begin main script ---------------------------------------------"
 date
 echo ""
+#
+# Set the number of CPU workers for data processing to match the number of CPUs
+# per task (i.e. per node) from the environment variable.
+#
+N_WORKERS="$SLURM_CPUS_PER_TASK"
+echo "N_WORKERS = $N_WORKERS"
 
-export NCCL_BLOCKING_WAIT=1     # Set this if you want to use the NCCL backend for inter-GPU communication.
-export MASTER_ADDR=$(hostname)  # Store the master node’s IP address in the MASTER_ADDR environment variable.
+export MASTER_ADDR=$(hostname -s)  # Store the master node’s IP address in the MASTER_ADDR environment variable.
+export MAIN_HOST="$MASTER_ADDR"
 
 echo "r$SLURM_NODEID master: $MASTER_ADDR"
 echo "r$SLURM_NODEID Launching python script"
@@ -286,6 +237,7 @@ echo "N_WORKERS  = $N_WORKERS"
 #
 # To do unsupervised pre-training of a ResNet-50 model on ImageNet, run:
 python main_simsiam.py \
+    "$DATA_DIR" \
     -a resnet50 \
     --dist-url 'tcp://localhost:10001' \
     --multiprocessing-distributed \
@@ -296,26 +248,21 @@ python main_simsiam.py \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/checkpoint_latest.pt" \
-    "$DATA_DIR" \
-    "${@:2}"
+    "${@}"
 
 echo ""
-CKPT_SOURCE=$(readlink "$CKPT_DIR/checkpoint_latest.pt")
-echo "Copying output checkpoint $CKPT_DIR to $JOB_OUTPUT_DIR"
-mkdir -p "$JOB_OUTPUT_DIR"
-rsync -rvz "$CKPT_SOURCE" "$JOB_OUTPUT_DIR"
-ln -sfn "${CKPT_SOURCE##*/}" "$JOB_OUTPUT_DIR/checkpoint_latest.pt"
-
-echo ""
-echo "------------------------------------------------------------------------"
-echo ""
+echo "------------------"
 date
+elapsed=$(( SECONDS - start_time ))
+eval "echo Total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo "------------------------------------"
 echo ""
 
 # Linear Classification
 echo "Training linear classifier"
 # With a pre-trained model, to train a supervised linear classifier on frozen features/weights
 python main_lincls.py \
+    "$DATA_DIR" \
     -a resnet50 \
     --dist-url 'tcp://localhost:10001' \
     --multiprocessing-distributed \
@@ -327,11 +274,36 @@ python main_lincls.py \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
-    "$DATA_DIR"
+    "${@}"
 
 echo ""
-CKPT_SOURCE=$(readlink "$CKPT_DIR/lincls_checkpoint_latest.pt")
-echo "Copying output checkpoint $CKPT_DIR to $JOB_OUTPUT_DIR"
-mkdir -p "$JOB_OUTPUT_DIR"
-rsync -rvz "$CKPT_SOURCE" "$JOB_OUTPUT_DIR"
-ln -sfn "${CKPT_SOURCE##*/}" "$JOB_OUTPUT_DIR/lincls_checkpoint_latest.pt"
+echo "------------------------------------"
+elapsed=$(( SECONDS - start_time ))
+eval "echo Running total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo ""
+if [[ "$CKPT_DIR" == "" ]];
+then
+    echo "CKPT_DIR is unset. Will not copy outputs to $JOB_OUTPUT_DIR."
+elif [[ "$JOB_OUTPUT_DIR" == "" ]];
+then
+    echo "JOB_OUTPUT_DIR is unset. Will not copy outputs from $CKPT_DIR."
+else
+    echo "-------- Saving outputs for long term storage --------------------------"
+    date
+    echo ""
+    echo "Copying outputs from $CKPT_DIR to $JOB_OUTPUT_DIR"
+    mkdir -p "$JOB_OUTPUT_DIR"
+    rsync -rutlzv "$CKPT_DIR/" "$JOB_OUTPUT_DIR/"
+    echo ""
+    echo "Output contents of ${JOB_OUTPUT_DIR}:"
+    ls -lh "$JOB_OUTPUT_DIR"
+fi
+echo ""
+echo "------------------------------------------------------------------------"
+echo ""
+echo "Job $SLURM_JOB_NAME ($SLURM_JOB_ID) finished, submitted from $SLURM_SUBMIT_HOST ($SLURM_CLUSTER_NAME)"
+date
+echo "------------------------------------"
+elapsed=$(( SECONDS - start_time ))
+eval "echo Total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo "========================================================================"
