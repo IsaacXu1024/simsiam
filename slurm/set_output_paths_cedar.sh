@@ -3,7 +3,6 @@
 echo ""
 echo "-------- Setting checkpoint and output path variables ------------------"
 date
-echo ""
 
 # Set the JOB_LABEL environment variable
 source "slurm/set_job-label.sh"

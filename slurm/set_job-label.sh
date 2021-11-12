@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo ""
 echo "-------- Setting JOB_LABEL ---------"
 echo ""
 # Decide the name of the paths to use for saving this job
