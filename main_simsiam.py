@@ -299,8 +299,10 @@ def main_worker(gpu, ngpus_per_node, args):
     # infer learning rate before changing batch size
     init_lr = args.lr * args.batch_size / 256
 
-    if args.distributed:
-        # Apply SyncBN
+    if not torch.cuda.is_available():
+        print("using CPU, this will be slow")
+    elif args.distributed:
+        # apply SyncBN
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,
