@@ -188,7 +188,7 @@ EOM
     cat srun_worker.sh
     echo ""
 
-    srun --mem 160G bash srun_worker.sh
+    srun --mem 83G bash srun_worker.sh
 
 fi
 
@@ -259,7 +259,7 @@ EOM
     cat srun_worker.sh
     echo ""
 
-    srun --mem 160G bash srun_worker.sh
+    srun --mem 83G bash srun_worker.sh
 
 fi
 
