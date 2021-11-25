@@ -198,6 +198,14 @@ echo ""
 N_WORKERS="$SLURM_CPUS_PER_TASK"
 echo "N_WORKERS = $N_WORKERS"
 
+# Both the batch size and number of workers get divided by ngpus_per_node in the
+# main_simsiam.py script.
+# Batch size parameter is the total batch size across all GPUs on the current node
+# We want the batch size to be as large we can, which is about 48 per GPU.
+#
+BATCH_SIZE="$(( 48 * SLURM_JOB_NUM_NODES * GPUS_PER_NODE ))"
+echo "BATCH_SIZE = $BATCH_SIZE (across all nodes)"
+
 export MASTER_ADDR=$(hostname -s)  # Store the master node’s IP address in the MASTER_ADDR environment variable.
 export MAIN_HOST="$MASTER_ADDR"
 
@@ -207,40 +215,71 @@ echo "r$SLURM_NODEID Launching python script"
 # Get the address of an open socket
 source "slurm/get_socket.sh"
 
-# Launch your script
 echo ""
-echo "# Main script begins with host tcp://localhost:$JOB_SOCKET with backend nccl"
-echo ""
+echo "---- Unsupervised Pre-Training -----"
 
-# Unsupervised Pre-Training
-echo "Unsupervised Pre-Training"
-#
-# Both the batch size and number of workers get divided by ngpus_per_node in the main_simsiam.py script.
-# Batch size parameter is the total batch size across all GPUs on the current node
-# We want the batch size to be as large we can, which is about 48 per GPU.
-#
-BATCH_SIZE="$(( 48 * SLURM_JOB_NUM_NODES * GPUS_PER_NODE ))"
-N_WORKERS="$SLURM_JOB_CPUS_PER_NODE"
-#
-echo "BATCH_SIZE = $BATCH_SIZE"
-echo "N_WORKERS  = $N_WORKERS"
-#
-# We just need to call the main_simsiam script once and it will launch all processes on each node, for each GPU, for us automatically.
-#
-# To do unsupervised pre-training of a ResNet-50 model on ImageNet, run:
+if [[ "$SLURM_JOB_NUM_NODES" == "1" ]];
+then
+    echo ""
+    echo "Main script begins with host tcp://localhost:$JOB_SOCKET with backend NCCL"
+    echo "Single ($SLURM_JOB_NUM_NODES) node training"
+    echo ""
+    #
+    # We just need to call the main_simsiam script once and it will launch all
+    # processes for each GPU on that node automatically.
+    #
+    # To do unsupervised pre-training of a ResNet-50 model on ImageNet, run:
+    python main_simsiam.py \
+        "$DATA_DIR" \
+        -a resnet50 \
+        --dist-url "tcp://localhost:$JOB_SOCKET" \
+        --multiprocessing-distributed \
+        --world-size "$SLURM_JOB_NUM_NODES" \
+        --rank 0 \
+        --fix-pred-lr \
+        --workers "$N_WORKERS" \
+        --batch-size "$BATCH_SIZE" \
+        --checkpoint-dir "$CKPT_DIR" \
+        --resume "$CKPT_DIR/checkpoint_latest.pt" \
+        "${@}"
+
+else
+    echo ""
+    echo "Main script begins with host tcp://${MAIN_HOST}:$JOB_SOCKET with backend NCCL"
+    echo "Multiple ($SLURM_JOB_NUM_NODES) node training"
+    echo ""
+    # export NCCL_DEBUG=INFO  # Debug errors
+    export NCCL_BLOCKING_WAIT=1  # Set this environment variable if you wish to use the NCCL backend for inter-GPU communication.
+    export NCCL_IB_DISABLE=1
+    #
+    # Make a shell script that calls our main with rank depending on process ID.
+    cat > srun_worker.sh <<- EOM
+sleep \$(( SLURM_PROCID * 5 ))
 python main_simsiam.py \
     "$DATA_DIR" \
     -a resnet50 \
-    --dist-url "tcp://localhost:$JOB_SOCKET" \
+    --dist-url "tcp://${MAIN_HOST}:${JOB_SOCKET}" \
     --multiprocessing-distributed \
     --world-size "$SLURM_JOB_NUM_NODES" \
-    --rank 0 \
+    --rank "\${SLURM_PROCID}" \
     --fix-pred-lr \
     --workers "$N_WORKERS" \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/checkpoint_latest.pt" \
-    "${@}"
+    ${@} \
+    |& tee "logs-inner/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_r-\${SLURM_PROCID}.out"
+EOM
+    mkdir -p logs-inner
+
+    echo ""
+    echo "Will execute srun_worker.sh with contents:"
+    cat srun_worker.sh
+    echo ""
+
+    srun --mem "$SLURM_MEM_PER_NODE" bash srun_worker.sh
+
+fi
 
 echo ""
 echo "------------------"
@@ -249,24 +288,69 @@ elapsed=$(( SECONDS - start_time ))
 eval "echo Total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
 echo "------------------------------------"
 echo ""
+echo "---- Linear classifier -------------"
 
-# Linear Classification
-echo "Training linear classifier"
-# With a pre-trained model, to train a supervised linear classifier on frozen features/weights
+if [[ "$SLURM_JOB_NUM_NODES" == "1" ]];
+then
+    echo ""
+    echo "Linear classifier begins with host tcp://localhost:$JOB_SOCKET with backend NCCL"
+    echo "Single ($SLURM_JOB_NUM_NODES) node training"
+    echo ""
+    #
+    # We just need to call the main_simsiam script once and it will launch all
+    # processes for each GPU on that node automatically.
+    #
+    # With a pre-trained model, to train a supervised linear classifier on
+    # frozen features/weights
+    python main_lincls.py \
+        "$DATA_DIR" \
+        -a resnet50 \
+        --dist-url "tcp://localhost:$JOB_SOCKET" \
+        --multiprocessing-distributed \
+        --world-size "$SLURM_JOB_NUM_NODES" \
+        --rank 0 \
+        --pretrained "$CKPT_DIR/checkpoint_latest.pt" \
+        --lars \
+        --workers "$N_WORKERS" \
+        --batch-size "$BATCH_SIZE" \
+        --checkpoint-dir "$CKPT_DIR" \
+        --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
+        "${@}"
+
+else
+    echo ""
+    echo "Linear classifier begins with host tcp://${MAIN_HOST}:$JOB_SOCKET with backend NCCL"
+    echo "Multiple ($SLURM_JOB_NUM_NODES) node training"
+    #
+    # Make a shell script that calls our main with rank depending on process ID.
+    cat > srun_worker.sh <<- EOM
+sleep \$(( SLURM_PROCID * 5 ))
 python main_lincls.py \
     "$DATA_DIR" \
     -a resnet50 \
-    --dist-url "tcp://localhost:$JOB_SOCKET" \
+    --dist-url "tcp://${MAIN_HOST}:${JOB_SOCKET}" \
     --multiprocessing-distributed \
     --world-size "$SLURM_JOB_NUM_NODES" \
-    --rank 0 \
+    --rank "\${SLURM_PROCID}" \
     --pretrained "$CKPT_DIR/checkpoint_latest.pt" \
     --lars \
     --workers "$N_WORKERS" \
     --batch-size "$BATCH_SIZE" \
     --checkpoint-dir "$CKPT_DIR" \
     --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
-    "${@}"
+    "${@}" \
+    |& tee "logs-inner/lincls_${SLURM_JOB_NAME}_${SLURM_JOB_ID}_r-\${SLURM_PROCID}.out"
+EOM
+    mkdir -p logs-inner
+
+    echo ""
+    echo "Will execute srun_worker.sh with contents:"
+    cat srun_worker.sh
+    echo ""
+
+    srun --mem "$SLURM_MEM_PER_NODE" bash srun_worker.sh
+
+fi
 
 echo ""
 echo "------------------------------------"
