@@ -78,7 +78,7 @@ echo ""
 echo "Installing packages into $ENV_DIR"
 echo ""
 # The recommend way is just to do this
-python -m pip install --no-index torch torchvision
+python -m pip install --no-index torch==1.9.1 torchvision==0.10.0
 python -m pip install -r requirements.txt
 
 # Print env status
