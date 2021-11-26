@@ -53,12 +53,6 @@ echo "DATASET    = $DATASET"
 echo "EXTRA_ARGS = ${@}"
 echo ""
 
-# Set up environment
-source "slurm/setup_env_cedar.sh"
-
-# Print env status
-source "slurm/report_env_config.sh"
-
 # Set checkpoint and output path environment variables
 source "slurm/set_output_paths_cedar.sh"
 
@@ -72,95 +66,6 @@ then
     echo "===================================="
     echo ""
 fi;
-
-echo "-------- Dataset transfer ---------------------------------------------"
-date
-echo ""
-
-if [ "$DATASET" == "imagenet" ]; then
-    DATA_DIR="$ROOT_DATA_DIR/$DATASET"
-    echo "# Copying imagenet dataset to local node's SSD storage, ${DATA_DIR}"
-
-    rsync -vz /project/rrg-ttt/datasets/imagenet/* "${DATA_DIR}/"
-
-    mkdir -p "$DATA_DIR/train"
-    mkdir -p "$DATA_DIR/val"
-
-    echo "Extracting training data"
-    tar -C "${DATA_DIR}/train" -xf "${DATA_DIR}/ILSVRC2012_img_train.tar"
-    find "${DATA_DIR}/train" -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
-    echo ""
-
-    echo "Extracting validation data"
-    tar -C "${DATA_DIR}/val" -xf "${DATA_DIR}/ILSVRC2012_img_val.tar"
-
-    # Move validation images to subfolders:
-    VAL_PREPPER="$DATA_DIR/valprep.sh"
-    if test -f "$VAL_PREPPER"; then
-        echo "Downloading valprep.sh";
-        wget https://raw.githubusercontent.com/soumith/imagenetloader.torch/b81dbb1/valprep.sh -O "$VAL_PREPPER";
-    fi
-    echo "Moving validation data into subfolders"
-    (cd "${DATA_DIR}/val"; sh "$VAL_PREPPER")
-    echo ""
-
-    # Check total files after extract
-    #
-    #  find train/ -name "*.JPEG" | wc -l
-    #  # Should be 1281167
-    #  find val/ -name "*.JPEG" | wc -l
-    #  # Should be 50000
-
-elif [ "$DATASET" == "imagenette2-160" ] || [ "$DATASET" == "imagenette" ]; then
-    DATA_DIR="$ROOT_DATA_DIR/$DATASET"
-    echo "# Copying imagenette2-160 dataset to local node's SSD storage, ${DATA_DIR}"
-
-    rsync -zv "/project/rrg-ttt/datasets/imagenette2/imagenette2-160.tgz" "${DATA_DIR}/"
-
-    echo ""
-    echo "Extracting data"
-    tar -C "${DATA_DIR}" -xf "${DATA_DIR}/imagenette2-160.tgz"
-    DATA_DIR="$DATA_DIR/imagenette2-160"
-
-elif [ -d "$DATASET" ]; then
-    echo ""
-    echo "# Copying directory $DATASET to local node's SSD storage, ${DATA_DIR}"
-    rsync -zv "$DATASET" "${DATA_DIR}/"
-
-elif [ -f "$DATASET" ]; then
-    echo ""
-
-    DATASET_FNAME="${DATASET##*/}"
-    DATASET_NAME="${DATASET_FNAME%%.*}"
-    DATASET_EXT="${DATASET_FNAME#*.}"
-    TARGET_FNAME="${ROOT_DATA_DIR}/${DATASET_FNAME}"
-
-    if [ "$DATASET_EXT" == "tar.gz" ] || [ "$DATASET_EXT" == "tgz" ] || [ "$DATASET_EXT" == "tar" ]; then
-        echo ""
-    else
-        echo "Unsupported file extension: $DATASET_EXT"
-        exit;
-    fi
-    echo "# Copying file $DATASET to local node's SSD storage, ${DATA_DIR}"
-    rsync -zv "$DATASET" "${ROOT_DATA_DIR}/"
-
-    echo "Untarring file $TARGET_FNAME"
-    tar -C "${ROOT_DATA_DIR}" -xf "$TARGET_FNAME"
-    DATA_DIR="$ROOT_DATA_DIR/$DATASET_NAME"
-
-else
-    echo "Invalid dataset name: $DATASET"
-    exit;
-
-fi
-
-if [[ "$start_time" != "" ]];
-then
-    echo "------------------------------------"
-    elapsed=$(( SECONDS - start_time ))
-    eval "echo Running total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
-fi
-echo "------------------------------------------------------------------------"
 
 echo ""
 echo "-------- Begin main script ---------------------------------------------"
@@ -196,6 +101,11 @@ echo "---- Unsupervised Pre-Training -----"
 if [[ "$SLURM_JOB_NUM_NODES" == "1" ]];
 then
     echo ""
+    echo "Executing single node training"
+    echo ""
+    # Set up environment and data
+    source "slurm/setup_cedar.sh"
+    echo ""
     echo "Main script begins with host tcp://localhost:$JOB_SOCKET with backend NCCL"
     echo "Single ($SLURM_JOB_NUM_NODES) node training"
     echo ""
@@ -230,11 +140,12 @@ else
     # Make a shell script that calls our main with rank depending on process ID.
     cat > srun_worker.sh <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
-# Set up environment
-source "slurm/setup_env_cedar.sh"
+# Set up environment and data
+DATASET="$DATASET"
+source "slurm/setup_cedar.sh"
 # Train self-supervised model
 python main_simsiam.py \
-    "$DATA_DIR" \
+    "\$DATA_DIR" \
     -a resnet50 \
     --dist-url "tcp://${MAIN_HOST}:${JOB_SOCKET}" \
     --multiprocessing-distributed \
@@ -303,11 +214,12 @@ else
     # Make a shell script that calls our main with rank depending on process ID.
     cat > srun_worker.sh <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
-# Set up environment
-source "slurm/setup_env_cedar.sh"
+# Set up environment and data
+DATASET="$DATASET"
+source "slurm/setup_cedar.sh"
 # Train linear classifier model
 python main_lincls.py \
-    "$DATA_DIR" \
+    "\$DATA_DIR" \
     -a resnet50 \
     --dist-url "tcp://${MAIN_HOST}:${JOB_SOCKET}" \
     --multiprocessing-distributed \
