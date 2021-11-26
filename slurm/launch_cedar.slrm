@@ -53,33 +53,8 @@ echo "DATASET    = $DATASET"
 echo "EXTRA_ARGS = ${@}"
 echo ""
 
-echo "-------- Environment set up --------------------------------------------"
-date
-echo ""
-
-# Load CC modules
-echo ""
-echo "Loading modules"
-echo ""
-module load python/3.8
-module load cuda cudnn
-module load scipy-stack
-
-# Make an environment, housed on the node's local SSD storage
-ENV_DIR="$SLURM_TMPDIR/env"
-echo ""
-echo "Creating environment $ENV_DIR"
-echo ""
-virtualenv --no-download "$ENV_DIR"
-source "$ENV_DIR/bin/activate"
-
-# Install pytorch
-echo ""
-echo "Installing packages into $ENV_DIR"
-echo ""
-# The recommend way is just to do this
-python -m pip install --no-index torch==1.9.1 torchvision==0.10.0
-python -m pip install -r requirements.txt
+# Set up environment
+source "slurm/setup_env_cedar.sh"
 
 # Print env status
 source "slurm/report_env_config.sh"
@@ -255,6 +230,9 @@ else
     # Make a shell script that calls our main with rank depending on process ID.
     cat > srun_worker.sh <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
+# Set up environment
+source "slurm/setup_env_cedar.sh"
+# Train self-supervised model
 python main_simsiam.py \
     "$DATA_DIR" \
     -a resnet50 \
@@ -325,6 +303,9 @@ else
     # Make a shell script that calls our main with rank depending on process ID.
     cat > srun_worker.sh <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
+# Set up environment
+source "slurm/setup_env_cedar.sh"
+# Train linear classifier model
 python main_lincls.py \
     "$DATA_DIR" \
     -a resnet50 \
