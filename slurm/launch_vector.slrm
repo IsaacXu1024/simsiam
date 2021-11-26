@@ -164,7 +164,9 @@ else
     export NCCL_IB_DISABLE=1
     #
     # Make a shell script that calls our main with rank depending on process ID.
-    cat > srun_worker.sh <<- EOM
+    mkdir -p tmp
+    worker_script="tmp/srun_worker_${JOB_LABEL}.sh"
+    cat > "$worker_script" <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
 python main_simsiam.py \
     "$DATA_DIR" \
@@ -185,10 +187,10 @@ EOM
 
     echo ""
     echo "Will execute srun_worker.sh with contents:"
-    cat srun_worker.sh
+    cat "$worker_script"
     echo ""
 
-    srun --mem "$SLURM_MEM_PER_NODE" bash srun_worker.sh
+    srun --mem "$SLURM_MEM_PER_NODE" bash "$worker_script"
 
 fi
 
@@ -234,7 +236,8 @@ else
     echo "Multiple ($SLURM_JOB_NUM_NODES) node training"
     #
     # Make a shell script that calls our main with rank depending on process ID.
-    cat > srun_worker.sh <<- EOM
+    worker_script="tmp/srun_worker_${JOB_LABEL}.sh"
+    cat > "$worker_script" <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
 python main_lincls.py \
     "$DATA_DIR" \
@@ -256,10 +259,10 @@ EOM
 
     echo ""
     echo "Will execute srun_worker.sh with contents:"
-    cat srun_worker.sh
+    cat "$worker_script"
     echo ""
 
-    srun --mem "$SLURM_MEM_PER_NODE" bash srun_worker.sh
+    srun --mem "$SLURM_MEM_PER_NODE" bash "$worker_script"
 
 fi
 
