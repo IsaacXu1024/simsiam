@@ -1,0 +1,300 @@
+#!/bin/bash
+#SBATCH --partition=p100,t4v1,t4v2,rtx6000  # Which node partition to use (partitioned by GPU type)
+#SBATCH --nodes 1                   # Number of nodes to request
+#SBATCH --gres=gpu:4                # Number of GPUs per node to request
+#SBATCH --tasks-per-node=1          # Number of processes to spawn per node
+#SBATCH --cpus-per-task=16          # Number of CPUs to request
+#SBATCH --mem=83G                   # RAM per node (don't exceed 43000MB per GPU)
+#SBATCH --output=logs/%x_%A-%a_%n-%t.out
+                                    # %x=job-name, %A=job ID, %a=array value, %n=node rank, %t=task rank, %N=hostname
+                                    # Note: You must manually create output directory "slogs" before launching job.
+                                    # otherwise the job will immediately fail without an error message.
+#SBATCH --open-mode=append          # Use append mode otherwise preemption resets the checkpoint file
+#SBATCH --job-name=simsiam
+#SBATCH --qos=normal
+
+# Manually define this variable to be equal to the number of GPUs in the --gres argument above
+GPUS_PER_NODE=4
+# Manually define the project name.
+# This should also be the name of your conda environment used for this project.
+PROJECT_NAME=simsiam
+
+# Exit if any command hits an error
+set -e
+
+# sbatch for Vector
+# Based on
+# https://github.com/VectorInstitute/TechAndEngineering/blob/master/benchmarks/resnet_torch/sample_script/script.sh
+# https://github.com/VectorInstitute/TechAndEngineering/blob/master/checkpoint_examples/PyTorch/launch_job.slrm
+# https://github.com/VectorInstitute/TechAndEngineering/blob/master/checkpoint_examples/PyTorch/run_train.sh
+
+# Store the time at which the script was launched
+start_time="$SECONDS"
+
+# Print slurm config report
+source "slurm/report_slurm_config.sh"
+# Print repo status report
+source "slurm/report_repo.sh"
+
+echo ""
+echo "-------- Input handling ------------------------------------------------"
+date
+echo ""
+# Input handling
+DATASET="$1"
+shift
+echo "DATASET    = $DATASET"
+
+# Take required positional variables out one at a time, using shift to
+# pop the argument from the list:
+
+# ARG_NAME="$1" && shift
+# echo "ARG_NAME = $ARG_NAME"
+
+# Any remaining arguments will be passed through to the main script later
+# (The pass-through works like *args or **kwargs in python.)
+echo "EXTRA_ARGS = ${@}"
+echo ""
+echo "------------------------------------"
+echo ""
+if [ "$DATASET" == "imagenet" ]; then
+    DATA_DIR="/scratch/ssd002/datasets/imagenet"
+elif [ "$DATASET" == "imagenette2-160" ] || [ "$DATASET" == "imagenette" ]; then
+    DATA_DIR="/scratch/ssd004/datasets/imagenette2/160"
+elif [ -d "$DATASET" ]; then
+    echo "Using manual dataset source $DATASET"
+    DATA_DIR="$DATASET"
+else
+    echo "Invalid dataset name: $DATASET"
+    exit;
+fi
+echo "DATA_DIR   = $DATA_DIR"
+echo ""
+echo "-------- Activating environment ----------------------------------------"
+date
+echo ""
+echo "source ~/.bashrc"
+source ~/.bashrc
+echo ""
+# Activate virtual environment
+ENVNAME="$PROJECT_NAME"
+echo "Activating environment $ENVNAME"
+conda activate "$ENVNAME"
+echo ""
+# Print env status
+source "slurm/report_env_config.sh"
+
+# Set checkpoint and output path environment variables
+source "slurm/set_output_paths_vector.sh"
+
+if [[ "$SLURM_RESTART_COUNT" > 0 && ! -f "$CKPT_DIR/checkpoint_latest.pt" ]];
+then
+    echo ""
+    echo "===================================="
+    echo "WARNING:"
+    echo "    Resuming after pre-emption (SLURM_RESTART_COUNT=$SLURM_RESTART_COUNT)"
+    echo "    but there is no checkpoint file at $CKPT_DIR/checkpoint_latest.pt"
+    echo "===================================="
+    echo ""
+fi;
+
+echo ""
+echo "-------- Begin main script ---------------------------------------------"
+date
+echo ""
+#
+# Set the number of CPU workers for data processing to match the number of CPUs
+# per task (i.e. per node) from the environment variable.
+#
+N_WORKERS="$SLURM_CPUS_PER_TASK"
+echo "N_WORKERS = $N_WORKERS"
+
+# Both the batch size and number of workers get divided by ngpus_per_node in the
+# main_simsiam.py script.
+# Batch size parameter is the total batch size across all GPUs on the current node
+# We want the batch size to be as large we can, which is about 48 per GPU.
+#
+BATCH_SIZE="$(( 48 * SLURM_JOB_NUM_NODES * GPUS_PER_NODE ))"
+echo "BATCH_SIZE = $BATCH_SIZE (across all nodes)"
+
+export MASTER_ADDR=$(hostname -s)  # Store the master node’s IP address in the MASTER_ADDR environment variable.
+export MAIN_HOST="$MASTER_ADDR"
+
+echo "r$SLURM_NODEID master: $MASTER_ADDR"
+echo "r$SLURM_NODEID Launching python script"
+
+# Get the address of an open socket
+source "slurm/get_socket.sh"
+
+echo ""
+echo "---- Unsupervised Pre-Training -----"
+
+if [[ "$SLURM_JOB_NUM_NODES" == "1" ]];
+then
+    echo ""
+    echo "Main script begins with host tcp://localhost:$JOB_SOCKET with backend NCCL"
+    echo "Single ($SLURM_JOB_NUM_NODES) node training"
+    echo ""
+    #
+    # We just need to call the main_simsiam script once and it will launch all
+    # processes for each GPU on that node automatically.
+    #
+    # To do unsupervised pre-training of a ResNet-50 model on ImageNet, run:
+    python main_simsiam.py \
+        "$DATA_DIR" \
+        -a resnet50 \
+        --dist-url "tcp://localhost:$JOB_SOCKET" \
+        --multiprocessing-distributed \
+        --world-size "$SLURM_JOB_NUM_NODES" \
+        --rank 0 \
+        --fix-pred-lr \
+        --workers "$N_WORKERS" \
+        --batch-size "$BATCH_SIZE" \
+        --checkpoint-dir "$CKPT_DIR" \
+        --resume "$CKPT_DIR/checkpoint_latest.pt" \
+        "${@}"
+
+else
+    echo ""
+    echo "Main script begins with host tcp://${MAIN_HOST}:$JOB_SOCKET with backend NCCL"
+    echo "Multiple ($SLURM_JOB_NUM_NODES) node training"
+    echo ""
+    # export NCCL_DEBUG=INFO  # Debug errors
+    export NCCL_BLOCKING_WAIT=1  # Set this environment variable if you wish to use the NCCL backend for inter-GPU communication.
+    export NCCL_IB_DISABLE=1
+    #
+    # Make a shell script that calls our main with rank depending on process ID.
+    mkdir -p tmp
+    worker_script="tmp/srun_worker_${JOB_LABEL}.sh"
+    cat > "$worker_script" <<- EOM
+sleep \$(( SLURM_PROCID * 5 ))
+python main_simsiam.py \
+    "$DATA_DIR" \
+    -a resnet50 \
+    --dist-url "tcp://${MAIN_HOST}:${JOB_SOCKET}" \
+    --multiprocessing-distributed \
+    --world-size "$SLURM_JOB_NUM_NODES" \
+    --rank "\${SLURM_PROCID}" \
+    --fix-pred-lr \
+    --workers "$N_WORKERS" \
+    --batch-size "$BATCH_SIZE" \
+    --checkpoint-dir "$CKPT_DIR" \
+    --resume "$CKPT_DIR/checkpoint_latest.pt" \
+    ${@} \
+    |& tee "logs-inner/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_r-\${SLURM_PROCID}.out"
+EOM
+    mkdir -p logs-inner
+
+    echo ""
+    echo "Will execute srun_worker.sh with contents:"
+    cat "$worker_script"
+    echo ""
+
+    srun --mem "$SLURM_MEM_PER_NODE" bash "$worker_script"
+
+fi
+
+echo ""
+echo "------------------"
+date
+elapsed=$(( SECONDS - start_time ))
+eval "echo Total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo "------------------------------------"
+echo ""
+echo "---- Linear classifier -------------"
+
+if [[ "$SLURM_JOB_NUM_NODES" == "1" ]];
+then
+    echo ""
+    echo "Linear classifier begins with host tcp://localhost:$JOB_SOCKET with backend NCCL"
+    echo "Single ($SLURM_JOB_NUM_NODES) node training"
+    echo ""
+    #
+    # We just need to call the main_simsiam script once and it will launch all
+    # processes for each GPU on that node automatically.
+    #
+    # With a pre-trained model, to train a supervised linear classifier on
+    # frozen features/weights
+    python main_lincls.py \
+        "$DATA_DIR" \
+        -a resnet50 \
+        --dist-url "tcp://localhost:$JOB_SOCKET" \
+        --multiprocessing-distributed \
+        --world-size "$SLURM_JOB_NUM_NODES" \
+        --rank 0 \
+        --pretrained "$CKPT_DIR/checkpoint_latest.pt" \
+        --lars \
+        --workers "$N_WORKERS" \
+        --batch-size "$BATCH_SIZE" \
+        --checkpoint-dir "$CKPT_DIR" \
+        --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
+        "${@}"
+
+else
+    echo ""
+    echo "Linear classifier begins with host tcp://${MAIN_HOST}:$JOB_SOCKET with backend NCCL"
+    echo "Multiple ($SLURM_JOB_NUM_NODES) node training"
+    #
+    # Make a shell script that calls our main with rank depending on process ID.
+    mkdir -p tmp
+    worker_script="tmp/srun_worker_${JOB_LABEL}.sh"
+    cat > "$worker_script" <<- EOM
+sleep \$(( SLURM_PROCID * 5 ))
+python main_lincls.py \
+    "$DATA_DIR" \
+    -a resnet50 \
+    --dist-url "tcp://${MAIN_HOST}:${JOB_SOCKET}" \
+    --multiprocessing-distributed \
+    --world-size "$SLURM_JOB_NUM_NODES" \
+    --rank "\${SLURM_PROCID}" \
+    --pretrained "$CKPT_DIR/checkpoint_latest.pt" \
+    --lars \
+    --workers "$N_WORKERS" \
+    --batch-size "$BATCH_SIZE" \
+    --checkpoint-dir "$CKPT_DIR" \
+    --resume "$CKPT_DIR/lincls_checkpoint_latest.pt" \
+    "${@}" \
+    |& tee "logs-inner/lincls_${SLURM_JOB_NAME}_${SLURM_JOB_ID}_r-\${SLURM_PROCID}.out"
+EOM
+    mkdir -p logs-inner
+
+    echo ""
+    echo "Will execute srun_worker.sh with contents:"
+    cat "$worker_script"
+    echo ""
+
+    srun --mem "$SLURM_MEM_PER_NODE" bash "$worker_script"
+
+fi
+
+echo ""
+echo "------------------------------------"
+elapsed=$(( SECONDS - start_time ))
+eval "echo Running total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo ""
+if [[ "$CKPT_DIR" == "" ]];
+then
+    echo "CKPT_DIR is unset. Will not copy outputs to $JOB_OUTPUT_DIR."
+elif [[ "$JOB_OUTPUT_DIR" == "" ]];
+then
+    echo "JOB_OUTPUT_DIR is unset. Will not copy outputs from $CKPT_DIR."
+else
+    echo "-------- Saving outputs for long term storage --------------------------"
+    date
+    echo ""
+    echo "Copying outputs from $CKPT_DIR to $JOB_OUTPUT_DIR"
+    mkdir -p "$JOB_OUTPUT_DIR"
+    rsync -rutlzv "$CKPT_DIR/" "$JOB_OUTPUT_DIR/"
+    echo ""
+    echo "Output contents of ${JOB_OUTPUT_DIR}:"
+    ls -lh "$JOB_OUTPUT_DIR"
+fi
+echo ""
+echo "------------------------------------------------------------------------"
+echo ""
+echo "Job $SLURM_JOB_NAME ($SLURM_JOB_ID) finished, submitted from $SLURM_SUBMIT_HOST ($SLURM_CLUSTER_NAME)"
+date
+echo "------------------------------------"
+elapsed=$(( SECONDS - start_time ))
+eval "echo Total elapsed time: $(date -ud "@$elapsed" +'$((%s/3600/24)) days %H hr %M min %S sec')"
+echo "========================================================================"
