@@ -35,11 +35,6 @@ mkdir -p "$CKPT_DIR"
 mkdir -p "checkpoints_working"
 ln -sfn "$CKPT_DIR" "$PWD/checkpoints_working/$SLURM_JOB_NAME"
 
-# Create a symlink to the job's checkpoint directory within a subfolder of the
-# current directory (repository directory) named checkpoint.
-mkdir -p "checkpoints_working"
-ln -sfn "$CKPT_DIR" "$PWD/checkpoints_working/$SLURM_JOB_NAME"
-
 # Specify an output directory to place checkpoints for long term storage once
 # the job is finished.
 # OUTPUT_DIR is the directory that will contain all completed jobs for this
