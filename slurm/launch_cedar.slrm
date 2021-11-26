@@ -214,6 +214,7 @@ else
     echo "Multiple ($SLURM_JOB_NUM_NODES) node training"
     #
     # Make a shell script that calls our main with rank depending on process ID.
+    mkdir -p tmp
     worker_script="tmp/srun_worker_${JOB_LABEL}.sh"
     cat > "$worker_script" <<- EOM
 sleep \$(( SLURM_PROCID * 5 ))
